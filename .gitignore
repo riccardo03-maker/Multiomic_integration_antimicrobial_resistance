@@ -4,3 +4,8 @@ r_trials.ipynb
 
 __pycache__
 .vscode/
+
+#Ignore folders with transformed data, they can be generated through scripts
+features_gpa_expr_snps/
+metadata/
+transformed_data/
