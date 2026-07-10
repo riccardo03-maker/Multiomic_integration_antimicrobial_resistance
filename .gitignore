@@ -1,5 +1,6 @@
 #notebook with trials
-trials.ipynb
+py_trials.ipynb
+r_trials.ipynb
 
 __pycache__
 .vscode/

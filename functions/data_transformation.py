@@ -69,4 +69,4 @@ if (__name__ == '__main__'):
     #transform gene expression, gpa and snps data
     for feature in ['genexp', 'gpa', 'snps']:
         data_matrix = transform_features(feature)
-        save_npz("./transformed_data/features/" + feature + "_features_vect.npz", data_matrix)
+        save_npz("./transformed_data/features/" + feature + "_features.npz", data_matrix)
