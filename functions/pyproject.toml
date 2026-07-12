@@ -1,0 +1,54 @@
+[project]
+name = 'datatransf'
+version = '0.0.1'
+authors = [
+  { name='Riccardo Grandicelli', email='riccardograndicelli03@gmail.com' },
+]
+description = 'Functions for data transformation for machine learning pipelines'
+readme = 'README.md'
+requires-python = '>=3.9'
+keywords = [
+  'multi-omic data integration',
+  'antimicrobial resistance',
+]
+maintainers = [
+  { name='Riccardo Grandicelli', email='riccardograndicelli03@gmail.com' },
+]
+classifiers = [
+  'Natural Language :: English',
+  'Operating System :: MacOS :: MacOS X',
+  'Operating System :: POSIX',
+  'Operating System :: POSIX :: Linux',
+  'Operating System :: Microsoft :: Windows',
+  'Programming Language :: Python',
+  'Programming Language :: Python :: 3',
+  'Programming Language :: Python :: 3.5',
+  'Programming Language :: Python :: 3.6',
+  'Programming Language :: Python :: 3.7',
+  'Programming Language :: Python :: 3.8',
+  'Programming Language :: Python :: 3.9',
+  'Programming Language :: Python :: 3.10',
+  'Programming Language :: Python :: 3.11',
+  'Programming Language :: Python :: Implementation :: CPython',
+  'Programming Language :: Python :: Implementation :: PyPy'
+]
+dependencies = [
+    'numpy',
+    'scipy',
+    'pandas',
+    'scikit-learn'
+]
+
+[project.optional-dependencies]
+dev = [
+  'pytest'
+]
+
+[project.urls]
+'Homepage' = 'https://github.com/riccardo03-maker/Multiomic_integration_antimicrobial_resistance/tree/main/functions/datatransf'
+
+[build-system]
+requires = [
+  'setuptools>=42',
+]
+build-backend = 'setuptools.build_meta'

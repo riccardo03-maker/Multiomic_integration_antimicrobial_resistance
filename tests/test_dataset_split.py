@@ -1,4 +1,4 @@
-from functions import weighted_train_test_split
+from datatransf import weighted_train_test_split
 import pytest
 from scipy.sparse import csr_array
 import pandas as pd
