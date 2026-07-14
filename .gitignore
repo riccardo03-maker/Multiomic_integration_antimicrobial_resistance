@@ -9,3 +9,6 @@ __pycache__
 features_gpa_expr_snps/
 metadata/
 transformed_data/
+
+#Folder with external data
+other_data/
