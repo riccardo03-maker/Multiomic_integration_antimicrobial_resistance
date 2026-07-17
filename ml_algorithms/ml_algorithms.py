@@ -2,13 +2,14 @@
 # -*- coding: utf-8 -*-
 
 from sklearn.model_selection import cross_val_score, StratifiedKFold
-from sklearn.metrics import f1_score, precision_score, recall_score
+from sklearn.metrics import f1_score, precision_score, recall_score, accuracy_score
 from sklearn import svm
 from sklearn.linear_model import LogisticRegression, LogisticRegressionCV
 
-from datatransf import weighted_train_test_split, create_list_of_all_features
+from datatransf import weighted_train_test_split, _get_non_zero_features, create_list_of_all_features
 import numpy as np
 import pandas as pd
+import math
 
 __author__=['Riccardo Grandicelli']
 __email__=['riccardograndicelli03@gmail.com']
@@ -112,30 +113,38 @@ def logistic_regression():
     '''
     Implement a logistic regression to predict antimicrobial resistance.
 
-    It uses an l2 (Ridge) regularization. For each drug and each combination of features, the full dataset is split 
-    into a training and a test set. Then the best value of C (which is the inverse of the regularization strength) is selected through 
-    a 5-fold cross-validation procedure applied on the train set (by ranking performances with a f1 macro score).
+    It uses an l1 (Lasso) regularization, so that as many features as possible are ignored
+    For each drug and each combination of features, the full dataset is split into a training and a test set. Then, the model is fitted
+    on the whole train set and its performances evaluated on the test set, using as scores precision and recall for both classes
+    (susceptible (0) and resistent (1)).
 
-    Finally, the model is fitted on the whole train set and its performances evaluated on the test set, using as scores precision and
-    recall for both classes (susceptible (0) and resistent (1)).
+    The best value of C (which is the inverse of the regularization strength) is selected through a 5-fold cross-validation procedure
+    applied on the train set (by ranking performances based on the accuracy).
 
     Note: for now we use just one type of feature (genexp, gpa or snps). So for each drug we have a fit for three times.
     '''
-    result_table = pd.DataFrame(columns = ['drug', 'features', 'precision_s', 'precision_r', 'recall_s', 'recall_r'])
+    result_table = pd.DataFrame(columns = ['drug', 'features', 'best C', 'precision_s', 'precision_r', 'recall_s', 'recall_r', 'accuracy'])
     coefficients = pd.DataFrame(columns = create_list_of_all_features(['genexp', 'gpa', 'snps']))
+    #give a name to the features in the final dataset with the coefficients
+
+    what_type_of_features = ['genexp'] * 6026 + ['gpa'] * 16005 + ['snps'] * 72236
+    coefficients.loc[0] = what_type_of_features
+    #create a row that tells what type is the feature that gives the name to the column
+
     for drug in drugs:
         coefficients_array = np.array([[]])
         for feature in ['genexp', 'gpa', 'snps']: 
             X_train, X_test, Y_train, Y_test, _, _ = weighted_train_test_split(drug = drug, features = [feature], test_size = 0.2, standardize = True,
                                                                                random_state  = 42)
-            log_reg = LogisticRegression(C = 0.1, l1_ratio=1.0, max_iter = 10000, tol = 1e-6, random_state=len(result_table))
-            #l1_ratio 0 is the l2 regularization
+            log_reg = LogisticRegressionCV(cv = 5, Cs = 10, l1_ratios=[1.0], max_iter = 10000, tol = 1e-6, random_state=len(result_table),
+                                         solver = 'liblinear', use_legacy_attributes = False, scoring = 'accuracy')
+            #l1_ratio 1 is the l1 regularization
             log_reg.fit(X_train, Y_train)
             
             Y_predict = log_reg.predict(X_test)
-            result_table.loc[len(result_table)] = [drug, feature, precision_score(Y_test, Y_predict, pos_label = 0), 
+            result_table.loc[len(result_table)] = [drug, feature, log_reg.C_, precision_score(Y_test, Y_predict, pos_label = 0), 
                                                    precision_score(Y_test, Y_predict, pos_label = 1), recall_score(Y_test, Y_predict, pos_label = 0), 
-                                                   recall_score(Y_test, Y_predict, pos_label = 1)]
+                                                   recall_score(Y_test, Y_predict, pos_label = 1), accuracy_score(Y_test, Y_predict)]
             coefficients_array = np.concatenate((coefficients_array, log_reg.coef_), axis = 1)
             print("Ciao")
         coefficients.loc[len(coefficients)] = coefficients_array[0] #use [0] because coefficients are stored as a column vectors
@@ -144,7 +153,48 @@ def logistic_regression():
     coefficients.to_csv("ml_algorithms/results/log_reg_coefficients.csv")
 
 
+def logistic_regression_with_feature_selection():
+    '''
+    Implement a logistic regression using only the features with a coefficient different from 0 in the logistic regression performed
+    with the previous function.
+
+    This function is identical to the previous one: it uses a logistic regression with Lasso regularization, selecting the best value of C
+    through a cross-validation. However, it only uses some of the features (those selected in the previous logistic regression function),
+    and uses all the three types of features at once (gene expression, gpa and snps).
+    '''
+    all_features = create_list_of_all_features(['genexp', 'gpa', 'snps'])
+    result_table = pd.DataFrame(columns = ['drug', 'features', 'best C', 'train samples', 'features used', 'precision_s', 'precision_r', 'recall_s', 'recall_r', 'accuracy'])
+
+    for drug in drugs:
+        X_train, X_test, Y_train, Y_test, _, _ = weighted_train_test_split(drug = drug, features = ['genexp', 'gpa', 'snps'], test_size = 0.2, 
+                                                    standardize = True, random_state  = 42)
+        #select the positions of the relevant features
+        relevant_features = _get_non_zero_features(drug)
+        relevant_features_indexes = [i for i, feat in enumerate(all_features) if feat in relevant_features]
+        
+        #keep only the relevant features in the datasets
+        X_train = X_train[:, relevant_features_indexes]
+        X_test = X_test[:, relevant_features_indexes]
+
+        log_reg = LogisticRegressionCV(cv = 5, Cs = 10, l1_ratios=[1.0], max_iter = 10000, tol = 1e-6, random_state = 42,
+                                         solver = 'liblinear', use_legacy_attributes = False, scoring = 'accuracy')
+        #l1_ratio 1 is the l1 regularization
+        log_reg.fit(X_train, Y_train)
+            
+        Y_predict = log_reg.predict(X_test)
+
+        #get all the features with coefficients different from 0
+        number_of_features_used = len([coefficient for coefficient in log_reg.coef_[0] if not math.isclose(coefficient, 0., abs_tol = 1e-15)])
+
+        result_table.loc[len(result_table)] = [drug, "genexp+gpa+snps", log_reg.C_, X_train.shape[0], number_of_features_used, 
+                                               precision_score(Y_test, Y_predict, pos_label = 0), precision_score(Y_test, Y_predict, pos_label = 1), 
+                                               recall_score(Y_test, Y_predict, pos_label = 0), recall_score(Y_test, Y_predict, pos_label = 1), 
+                                               accuracy_score(Y_test, Y_predict)]
+        print("Iteration")
+    result_table.to_csv("ml_algorithms/results/log_reg_relevant_features.csv")
+
+
 if(__name__ == '__main__'):
-    logistic_regression()
+    logistic_regression_with_feature_selection()
 
 

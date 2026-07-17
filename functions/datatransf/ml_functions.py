@@ -109,3 +109,26 @@ def weighted_train_test_split(drug: str, features: list, test_size: float, stand
             X_test = hstack([X_test, new_features_test], format = "csr")
 
     return X_train, X_test, Y_train, Y_test, strains_train, strains_test
+
+
+def _get_non_zero_features(drug: str):
+    '''
+    This function is used to obtain all the features with a coefficient different from zero in the logistic regression implemented through
+    the 'logistic_regression' function in the ml_algorithms.py file.
+
+    Parameters
+    ----------
+        drug: str
+            The selected drug among the four possible choices ('Cef', 'Cip', 'Mer', 'Tob')
+    Returns
+    -------
+        relevant_features: list of str
+            The list of features with coefficients different from 0 in the logistic regression
+    '''
+    data = pd.read_csv("ml_algorithms/results/log_reg_coefficients.csv")
+    transposed = data.T.iloc[1:] #now drugs are columns and features are rows
+    transposed.columns = ['Feature_type', 'Cef', 'Cip', 'Mer', 'Tob']
+    data = transposed[[drug]].query(drug + ' != "0.0"') #select only the rows where the coefficient for the selected drug is not 0
+    relevant_features = data.T.columns
+
+    return relevant_features
