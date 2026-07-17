@@ -159,38 +159,47 @@ def logistic_regression_with_feature_selection():
     with the previous function.
 
     This function is identical to the previous one: it uses a logistic regression with Lasso regularization, selecting the best value of C
-    through a cross-validation. However, it only uses some of the features (those selected in the previous logistic regression function),
-    and uses all the three types of features at once (gene expression, gpa and snps).
+    through a cross-validation. However, it only uses some of the features (those selected in the previous logistic regression function).
+
+    Moreover, the logistic regression for each drug is performed 4 times, once for each combination of two or more types of features
+    (genexp+gpa, gpa+snps, genexp+snps and genexp+gpa+snps). The aim is to see if the combination of two or more types of features in
+    the logistic regression can improve classification performances.
     '''
     all_features = create_list_of_all_features(['genexp', 'gpa', 'snps'])
     result_table = pd.DataFrame(columns = ['drug', 'features', 'best C', 'train samples', 'features used', 'precision_s', 'precision_r', 'recall_s', 'recall_r', 'accuracy'])
 
     for drug in drugs:
-        X_train, X_test, Y_train, Y_test, _, _ = weighted_train_test_split(drug = drug, features = ['genexp', 'gpa', 'snps'], test_size = 0.2, 
+        for j in [1, 3, 4, 5]: #repeat for all combinations of two or more feature types
+            X_train, X_test, Y_train, Y_test, _, _ = weighted_train_test_split(drug = drug, features = ['genexp', 'gpa', 'snps'], test_size = 0.2, 
                                                     standardize = True, random_state  = 42)
-        #select the positions of the relevant features
-        relevant_features = _get_non_zero_features(drug)
-        relevant_features_indexes = [i for i, feat in enumerate(all_features) if feat in relevant_features]
+            #select the positions of the relevant features
+            relevant_features, relevant_features_types = _get_non_zero_features(drug)
+            relevant_features_indexes = [i for i, feat in enumerate(all_features) if feat in relevant_features]
+
+            #keep only the features relative to the types considered in this iteration loop
+            relevant_features_indexes = [index for k, index in enumerate(relevant_features_indexes) 
+                                     if relevant_features_types[k] in all_combinations_of_features[j]]
         
-        #keep only the relevant features in the datasets
-        X_train = X_train[:, relevant_features_indexes]
-        X_test = X_test[:, relevant_features_indexes]
+            #keep only the relevant features in the input features datasets
+            X_train = X_train[:, relevant_features_indexes]
+            X_test = X_test[:, relevant_features_indexes]
 
-        log_reg = LogisticRegressionCV(cv = 5, Cs = 10, l1_ratios=[1.0], max_iter = 10000, tol = 1e-6, random_state = 42,
+            log_reg = LogisticRegressionCV(cv = 5, Cs = 10, l1_ratios=[1.0], max_iter = 10000, tol = 1e-6, random_state = 42,
                                          solver = 'liblinear', use_legacy_attributes = False, scoring = 'accuracy')
-        #l1_ratio 1 is the l1 regularization
-        log_reg.fit(X_train, Y_train)
+            #l1_ratio 1 is the l1 regularization
+            log_reg.fit(X_train, Y_train)
             
-        Y_predict = log_reg.predict(X_test)
+            Y_predict = log_reg.predict(X_test)
 
-        #get all the features with coefficients different from 0
-        number_of_features_used = len([coefficient for coefficient in log_reg.coef_[0] if not math.isclose(coefficient, 0., abs_tol = 1e-15)])
+            #get all the features with coefficients different from 0
+            number_of_features_used = len([coefficient for coefficient in log_reg.coef_[0] if not math.isclose(coefficient, 0., abs_tol = 1e-15)])
 
-        result_table.loc[len(result_table)] = [drug, "genexp+gpa+snps", log_reg.C_, X_train.shape[0], number_of_features_used, 
-                                               precision_score(Y_test, Y_predict, pos_label = 0), precision_score(Y_test, Y_predict, pos_label = 1), 
-                                               recall_score(Y_test, Y_predict, pos_label = 0), recall_score(Y_test, Y_predict, pos_label = 1), 
-                                               accuracy_score(Y_test, Y_predict)]
-        print("Iteration")
+            result_table.loc[len(result_table)] = [drug, features_strings[j], log_reg.C_, X_train.shape[0], number_of_features_used, 
+                                                precision_score(Y_test, Y_predict, pos_label = 0), precision_score(Y_test, Y_predict, pos_label = 1), 
+                                                recall_score(Y_test, Y_predict, pos_label = 0), recall_score(Y_test, Y_predict, pos_label = 1), 
+                                                accuracy_score(Y_test, Y_predict)]
+            print("Iteration")
+
     result_table.to_csv("ml_algorithms/results/log_reg_relevant_features.csv")
 
 

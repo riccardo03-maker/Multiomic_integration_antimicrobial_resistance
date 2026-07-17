@@ -124,11 +124,15 @@ def _get_non_zero_features(drug: str):
     -------
         relevant_features: list of str
             The list of features with coefficients different from 0 in the logistic regression
+        relevant_features_types: list of str
+            The type of the relevant features selected (can be either genexp, gpa or snps)
     '''
     data = pd.read_csv("ml_algorithms/results/log_reg_coefficients.csv")
     transposed = data.T.iloc[1:] #now drugs are columns and features are rows
     transposed.columns = ['Feature_type', 'Cef', 'Cip', 'Mer', 'Tob']
-    data = transposed[[drug]].query(drug + ' != "0.0"') #select only the rows where the coefficient for the selected drug is not 0
+    data = transposed[['Feature_type', drug]].query(drug + ' != "0.0"') #select only the rows where the coefficient for the selected drug is not 0
+    
     relevant_features = data.T.columns
+    relevant_features_types = list(data.T.iloc[0])
 
-    return relevant_features
+    return relevant_features, relevant_features_types

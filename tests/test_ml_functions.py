@@ -124,4 +124,6 @@ def test_list_of_non_zero_features():
     WHEN: I create the list of all the features with coefficients different from 0 for the Ceftazidim drug
     THEN: I obtain a list of 261 elements (counted using R)
     '''
-    assert(len(_get_non_zero_features(drug = 'Cef')) == 261)
+    relevant_features, relevant_features_types = _get_non_zero_features(drug = 'Cef')
+    assert(len(relevant_features) == 261)
+    assert(len(relevant_features_types) == 261)
