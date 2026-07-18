@@ -5,11 +5,14 @@ from sklearn.model_selection import cross_val_score, StratifiedKFold
 from sklearn.metrics import f1_score, precision_score, recall_score, accuracy_score
 from sklearn import svm
 from sklearn.linear_model import LogisticRegression, LogisticRegressionCV
+from sklearn.decomposition import PCA
+from sklearn.preprocessing import scale
 
 from datatransf import weighted_train_test_split, _get_non_zero_features, create_list_of_all_features
 import numpy as np
 import pandas as pd
 import math
+from scipy.sparse import load_npz, csr_array
 
 __author__=['Riccardo Grandicelli']
 __email__=['riccardograndicelli03@gmail.com']
@@ -203,8 +206,41 @@ def logistic_regression_with_feature_selection():
     result_table.to_csv("ml_algorithms/results/logistic_regression/log_reg_relevant_features.csv")
 
 
+def pca():
+    '''
+    Implement a PCA for all the three types of features, to see if two principal components are enough to split samples correctly
+    into the two classes.
+    '''
+    for drug in drugs:
+        #create datasets of input features and output targets, but without dividing into train and test sets
+        targets = pd.read_csv("./transformed_data/targets/targets.csv")
+        columns = [c for c in targets.columns if c in ["Index", "Strain", drug]]
+        targets = targets[columns]
+        targets=targets.dropna(subset=drug)
+
+        #get the indexes of the remaining samples (those without NA for the drug considered in this iteration)
+        indexes_to_keep = targets["Index"]
+
+        for feature in ['genexp', 'gpa', 'snps']:
+            features = load_npz("./transformed_data/features/" + feature + "_features.npz")
+            features = features[indexes_to_keep]
+            if feature == 'genexp': #standardize
+                features = scale(features.toarray()) #standardization cannot be done using sparse matrices, so we convert into np.ndarray
+                features = csr_array(features)
+
+            pca = PCA(n_components = 2)
+            pca.fit(features)
+            samples_projected = pca.transform(features)
+
+            targets.insert(len(targets.columns), feature + "_1", samples_projected[:, 0])
+            targets.insert(len(targets.columns), feature + "_2", samples_projected[:, 1])
+
+            print("Iteration")
+        
+        targets.to_csv("ml_algorithms/results/pca/pca_" + drug + ".csv")
+
+
 if(__name__ == '__main__'):
-    logistic_regression()
-    logistic_regression_with_feature_selection()
+    pca()
 
 
