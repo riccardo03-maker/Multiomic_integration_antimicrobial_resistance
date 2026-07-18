@@ -69,7 +69,7 @@ def svm_paper_cv():
             scores_array[i][j] = cv_scores.mean()
     
     scores_data = pd.DataFrame(data = scores_array, index = features_strings, columns = drugs)
-    scores_data.to_csv("./ml_algorithms/results/svm_paper_cv.csv")
+    scores_data.to_csv("./ml_algorithms/results/svm/svm_paper_cv.csv")
 
 
 def svm_paper_test(standardize: bool = False):
@@ -146,11 +146,11 @@ def logistic_regression():
                                                    precision_score(Y_test, Y_predict, pos_label = 1), recall_score(Y_test, Y_predict, pos_label = 0), 
                                                    recall_score(Y_test, Y_predict, pos_label = 1), accuracy_score(Y_test, Y_predict)]
             coefficients_array = np.concatenate((coefficients_array, log_reg.coef_), axis = 1)
-            print("Ciao")
+            print("Iteration")
         coefficients.loc[len(coefficients)] = coefficients_array[0] #use [0] because coefficients are stored as a column vectors
 
-    result_table.to_csv("ml_algorithms/results/log_reg.csv")
-    coefficients.to_csv("ml_algorithms/results/log_reg_coefficients.csv")
+    result_table.to_csv("ml_algorithms/results/logistic_regression/log_reg.csv")
+    coefficients.to_csv("ml_algorithms/results/logistic_regression/log_reg_coefficients.csv")
 
 
 def logistic_regression_with_feature_selection():
@@ -200,10 +200,11 @@ def logistic_regression_with_feature_selection():
                                                 accuracy_score(Y_test, Y_predict)]
             print("Iteration")
 
-    result_table.to_csv("ml_algorithms/results/log_reg_relevant_features.csv")
+    result_table.to_csv("ml_algorithms/results/logistic_regression/log_reg_relevant_features.csv")
 
 
 if(__name__ == '__main__'):
+    logistic_regression()
     logistic_regression_with_feature_selection()
 
 
