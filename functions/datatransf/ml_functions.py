@@ -12,7 +12,7 @@ __author__=['Riccardo Grandicelli']
 __email__=['riccardograndicelli03@gmail.com']
 
 
-def weighted_train_test_split(drug: str, features: list, test_size: float, standardize: bool = False, random_state: int = None):
+def weighted_train_test_split(drug: str, features: list, test_size: float, standardize: bool = False, random_state: int = None, full_Y: bool = False):
     '''
     Given a drug and one or more set of features (gene expression, gpa or snps), this function divides those features data 
     into train and test set, keeping in both sets the same proportion between susceptible and resistant to a certain drug.
@@ -35,11 +35,15 @@ def weighted_train_test_split(drug: str, features: list, test_size: float, stand
             If True, standardize gene expression data after the train-test division.
         random_state: int (default: None)
             Random seed for reproducibility.
+        full_Y: bool (default: False)
+            If True, returns the output classes datasets (Y_train and Y_test) as pandas.DataFrame, keeping also the strains names and their
+            indexes (the index is just the order they appear in the list of all strains). If False, returns the output classes datasets as
+            numpy.ndarray, removing indexes and strains and keeping only the classes for the selected drug.
     Returns
     -------
         X_train, X_test: csr_array
             Training and test sets of input features.
-        Y_train, Y_test: pd.Dataframe
+        Y_train, Y_test: np.ndarray or pd.Dataframe
             Training and test sets of output classes.
         strains_train, strains_test: pd.DataFrame
             The strains (and relative indexes) present in train and test sets, respectively.
@@ -74,14 +78,17 @@ def weighted_train_test_split(drug: str, features: list, test_size: float, stand
     Y_train_full=pd.concat([Y_train_s, Y_train_r]) #three columns: drug, index and strain
     Y_test_full=pd.concat([Y_test_s, Y_test_r])
 
-    Y_train = np.array(Y_train_full[drug], dtype = np.float64)
-    Y_test = np.array(Y_test_full[drug], dtype = np.float64)
-    strains_train = Y_train_full[["Index", "Strain"]]
-    strains_test = Y_test_full[["Index", "Strain"]]
-
     #get the indexes of train and test samples, to split also input data
-    train_indexes = strains_train["Index"].tolist()
-    test_indexes = strains_test["Index"].tolist()
+    train_indexes = Y_train_full["Index"].tolist()
+    test_indexes = Y_test_full["Index"].tolist()
+
+    #choose whether to return a pandas dataframe or a numpy ndarray
+    if full_Y:
+        Y_train = Y_train_full
+        Y_test = Y_test_full
+    else:
+        Y_train = np.array(Y_train_full[drug], dtype = np.float64)
+        Y_test = np.array(Y_test_full[drug], dtype = np.float64)
 
     for i, feature in enumerate(Counter(features).keys()): #keep only unique values of the list of features, to avoid issues with repetitions
         if feature not in ['genexp', 'gpa', 'snps']:
@@ -108,7 +115,7 @@ def weighted_train_test_split(drug: str, features: list, test_size: float, stand
             X_train = hstack([X_train, new_features_train], format = "csr")
             X_test = hstack([X_test, new_features_test], format = "csr")
 
-    return X_train, X_test, Y_train, Y_test, strains_train, strains_test
+    return X_train, X_test, Y_train, Y_test
 
 
 def _get_non_zero_features(drug: str):

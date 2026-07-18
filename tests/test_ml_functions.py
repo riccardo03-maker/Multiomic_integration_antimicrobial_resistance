@@ -44,18 +44,14 @@ def test_correct_train_test_split():
     WHEN: I split these data into train and test sets.
     THEN: both train and test input features sets have 22031 columns, and the sum of the number of rows of train and test sets is 406
     (there are 8 NaN for tobramycin). At the same time, train and test output targets sets have one column each, and a total of 406 rows.
-    Finally, list of strains of train and test sets must have two columns each, and a total of 406 rows.
-    Input features sets must be scipy.sparse.csr_array objects, output targets sets must be numpy.ndarray objects, and list of strains
-    must be pandas.DataFrame objects.
+    Input features sets must be scipy.sparse.csr_array objects, while output targets sets must be numpy.ndarray objects.
     '''
-    X_train, X_test, Y_train, Y_test, strains_train, strains_test = weighted_train_test_split(drug = 'Tob', features = ['genexp', 'gpa'], test_size = 0.2)
+    X_train, X_test, Y_train, Y_test = weighted_train_test_split(drug = 'Tob', features = ['genexp', 'gpa'], test_size = 0.2)
 
     assert(isinstance(X_train, csr_array))
     assert(isinstance(X_test, csr_array))
     assert(isinstance(Y_train, np.ndarray))
     assert(isinstance(Y_test, np.ndarray))
-    assert(isinstance(strains_train, pd.DataFrame))
-    assert(isinstance(strains_test, pd.DataFrame))
 
     assert(X_train.shape[0] + X_test.shape[0] == 406)
     assert(X_train.shape[1] == 22031) 
@@ -70,9 +66,32 @@ def test_correct_train_test_split():
     with pytest.raises(IndexError):
         Y_test.shape[1]
 
-    assert(strains_train.shape[0] + strains_test.shape[0] == 406)
-    assert(strains_train.shape[1] == 2)
-    assert(strains_test.shape[1] == 2)
+    
+def test_correct_train_test_split():
+    '''
+    This test is identical to the previous one, except that the parameter 'full_Y' of the weighted_train_test_split function is True.
+
+    GIVEN: input features about gene expression and gpa, and output classes relative to tobramycin susceptibility or resistance.
+    WHEN: I split these data into train and test sets, with the parameter 'full_Y' = True.
+    THEN: both train and test input features sets have 22031 columns, and the sum of the number of rows of train and test sets is 406
+    (there are 8 NaN for tobramycin). At the same time, train and test output targets sets have three columns each, and a total of 406 rows.
+    Input features sets must be scipy.sparse.csr_array objects, while output targets sets must be pandas.DataFrame objects
+    '''
+    X_train, X_test, Y_train, Y_test = weighted_train_test_split(drug = 'Tob', features = ['genexp', 'gpa'], test_size = 0.2, full_Y = True)
+
+    assert(isinstance(X_train, csr_array))
+    assert(isinstance(X_test, csr_array))
+    assert(isinstance(Y_train, pd.DataFrame))
+    assert(isinstance(Y_test, pd.DataFrame))
+
+    assert(X_train.shape[0] + X_test.shape[0] == 406)
+    assert(X_train.shape[1] == 22031) 
+    assert(X_test.shape[1] == 22031)
+
+    assert(Y_train.shape[0] + Y_test.shape[0] == 406)
+    
+    assert(Y_train.shape[1] == 3)
+    assert(Y_test.shape[1] == 3)
 
 
 def test_correct_standardization():
@@ -83,7 +102,7 @@ def test_correct_standardization():
     WHEN: I split data into train and test sets, with standardization of gene expression data after the splitting.
     THEN: each feature of gene expression data has 0 mean and 1 standard deviation.
     '''
-    X_train, X_test, _, _, _, _ = weighted_train_test_split(drug = 'Tob', features = ['genexp'], test_size = 0.2, standardize = True, random_state = 42)
+    X_train, X_test, _, _ = weighted_train_test_split(drug = 'Tob', features = ['genexp'], test_size = 0.2, standardize = True, random_state = 42)
     X_train = X_train.toarray()
     X_test = X_test.toarray()
     
@@ -106,7 +125,7 @@ def test_no_standardization_for_other_data():
     WHEN: I split data into train and test sets, with standardization of gene expression data after the splitting.
     THEN: each feature of gpa has either the value 0 or 1 for each sample (isolate). So train and test set contain just two different values
     '''
-    X_train, X_test, _, _, _, _ = weighted_train_test_split(drug = 'Tob', features = ['gpa'], test_size = 0.2, standardize = True, random_state = 42)
+    X_train, X_test, _, _ = weighted_train_test_split(drug = 'Tob', features = ['gpa'], test_size = 0.2, standardize = True, random_state = 42)
     X_train = X_train.toarray()
     X_test = X_test.toarray()
 

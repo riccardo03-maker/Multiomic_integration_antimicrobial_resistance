@@ -52,7 +52,7 @@ def svm_paper_cv():
     for j, drug in enumerate(drugs):
         for i, features in enumerate(all_combinations_of_features):
 
-            X_train, X_test, Y_train, Y_test, _, _ = weighted_train_test_split(drug = drug, features = features, test_size = 0.2, random_state  = 42)
+            X_train, X_test, Y_train, Y_test = weighted_train_test_split(drug = drug, features = features, test_size = 0.2, random_state  = 42)
             #use a seed for random number generation, so that the splitting between train and test set is always
             #the same for the same drug, and results can be compared more easily
 
@@ -99,7 +99,7 @@ def svm_paper_test(standardize: bool = False):
     c_params = [0.015, 0.07, 0.04, 0.03]
 
     for i in range(4):
-        X_train, X_test, Y_train, Y_test, _, _ = weighted_train_test_split(drug = drugs[i], features = features[i], test_size = 0.2, 
+        X_train, X_test, Y_train, Y_test = weighted_train_test_split(drug = drugs[i], features = features[i], test_size = 0.2, 
                                                     standardize = standardize, random_state  = 42)
 
         svm_model = svm.LinearSVC(penalty = 'l1', loss = 'squared_hinge', max_iter = 1000000, tol = 0.000001,
@@ -134,7 +134,7 @@ def logistic_regression():
     for drug in drugs:
         coefficients_array = np.array([[]])
         for feature in ['genexp', 'gpa', 'snps']: 
-            X_train, X_test, Y_train, Y_test, _, _ = weighted_train_test_split(drug = drug, features = [feature], test_size = 0.2, standardize = True,
+            X_train, X_test, Y_train, Y_test = weighted_train_test_split(drug = drug, features = [feature], test_size = 0.2, standardize = True,
                                                                                random_state  = 42)
             log_reg = LogisticRegressionCV(cv = 5, Cs = 10, l1_ratios=[1.0], max_iter = 10000, tol = 1e-6, random_state=len(result_table),
                                          solver = 'liblinear', use_legacy_attributes = False, scoring = 'accuracy')
@@ -170,7 +170,7 @@ def logistic_regression_with_feature_selection():
 
     for drug in drugs:
         for j in [1, 3, 4, 5]: #repeat for all combinations of two or more feature types
-            X_train, X_test, Y_train, Y_test, _, _ = weighted_train_test_split(drug = drug, features = ['genexp', 'gpa', 'snps'], test_size = 0.2, 
+            X_train, X_test, Y_train, Y_test = weighted_train_test_split(drug = drug, features = ['genexp', 'gpa', 'snps'], test_size = 0.2, 
                                                     standardize = True, random_state  = 42)
             #select the positions of the relevant features
             relevant_features, relevant_features_types = _get_non_zero_features(drug)
