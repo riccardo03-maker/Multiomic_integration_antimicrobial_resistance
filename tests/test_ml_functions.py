@@ -1,4 +1,4 @@
-from datatransf import weighted_train_test_split, _get_non_zero_features
+from datatransf import weighted_train_test_split, _get_non_zero_features, _get_number_of_samples_by_class
 import pytest
 from scipy.sparse import csr_array
 import pandas as pd
@@ -146,3 +146,46 @@ def test_list_of_non_zero_features():
     relevant_features, relevant_features_types = _get_non_zero_features(drug = 'Cef')
     assert(len(relevant_features) == 261)
     assert(len(relevant_features_types) == 261)
+
+
+# Testing count of assignments to susceptible and resistent classes
+
+
+def test_count_class_assignment():
+    '''
+    Test the correct count of the number of samples assigned to each class after a classification performance.
+
+    GIVEN: a test set with 20 samples, 13 belonging to class 0 (susceptible) and 7 belonging to class 1 (resistent), and a set
+    of predicted classes with 9 samples classified as susceptible and 11 classified as resistent.
+    WHEN: I count the number of samples in each class for both test set and predicted set.
+    THEN: the count returns the correct values.
+    '''
+    real_classes = [0., 1., 0., 0., 1., 1., 1., 0., 0., 0., 0., 0., 1., 0., 0., 1., 1., 0., 0., 0.]
+    predicted_classes = [0., 1., 1., 1., 0., 0., 1., 1., 1., 1., 0., 0., 1., 0., 0., 1., 1., 0., 0., 1.]
+
+    predict_counts, real_counts = _get_number_of_samples_by_class(predicted_classes, real_classes)
+
+    assert(predict_counts[0] == 9)
+    assert(predict_counts[1] == 11)
+    assert(real_counts[0] == 13)
+    assert(real_counts[1] == 7)
+
+
+def test_all_samples_in_one_class():
+    '''
+    Test the correct behaviour of the _get_number_of_samples_by_class function when predicted classes of all the samples is the same.
+
+    GIVEN: a test set with 20 samples, 13 belonging to class 0 (susceptible) and 7 belonging to class 1 (resistent), and a set
+    of predicted classes with all samples classified as resistent.
+    WHEN: I count the number of samples in each class for both test set and predicted set.
+    THEN: the count returns the correct values.
+    '''
+    real_classes = [0., 1., 0., 0., 1., 1., 1., 0., 0., 0., 0., 0., 1., 0., 0., 1., 1., 0., 0., 0.]
+    predicted_classes = [1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1.]
+
+    predict_counts, real_counts = _get_number_of_samples_by_class(predicted_classes, real_classes)
+
+    assert(predict_counts[0] == 0)
+    assert(predict_counts[1] == 20)
+    assert(real_counts[0] == 13)
+    assert(real_counts[1] == 7)

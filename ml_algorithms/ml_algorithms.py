@@ -9,7 +9,7 @@ from sklearn.decomposition import PCA
 from sklearn.preprocessing import scale
 from sklearn.discriminant_analysis import LinearDiscriminantAnalysis, QuadraticDiscriminantAnalysis
 
-from datatransf import weighted_train_test_split, _get_non_zero_features, create_list_of_all_features
+from datatransf import weighted_train_test_split, _get_non_zero_features, create_list_of_all_features, _get_number_of_samples_by_class
 import numpy as np
 import pandas as pd
 import math
@@ -129,6 +129,8 @@ def logistic_regression():
     Note: for now we use just one type of feature (genexp, gpa or snps). So for each drug we have a fit for three times.
     '''
     result_table = pd.DataFrame(columns = ['drug', 'features', 'best C', 'precision_s', 'precision_r', 'recall_s', 'recall_r', 'accuracy'])
+    count_table = pd.DataFrame(columns = ['drug', 'features', 'test samples', 'predicted_s', 'real_s', 'predicted_r', 'real_r'])
+    
     coefficients = pd.DataFrame(columns = create_list_of_all_features(['genexp', 'gpa', 'snps']))
     #give a name to the features in the final dataset with the coefficients
 
@@ -147,14 +149,22 @@ def logistic_regression():
             log_reg.fit(X_train, Y_train)
             
             Y_predict = log_reg.predict(X_test)
+
+            #get the total number of predicted and real susceptible and resistent samples
+            predicted_classes, real_classes = _get_number_of_samples_by_class(Y_predict, Y_test)
+
             result_table.loc[len(result_table)] = [drug, feature, log_reg.C_, precision_score(Y_test, Y_predict, pos_label = 0), 
                                                    precision_score(Y_test, Y_predict, pos_label = 1), recall_score(Y_test, Y_predict, pos_label = 0), 
                                                    recall_score(Y_test, Y_predict, pos_label = 1), accuracy_score(Y_test, Y_predict)]
+            count_table.loc[len(count_table)] = [drug, feature, X_test.shape[0], predicted_classes[0],
+                                                 real_classes[0], predicted_classes[1], real_classes[1]]
+
             coefficients_array = np.concatenate((coefficients_array, log_reg.coef_), axis = 1)
             print("Iteration")
         coefficients.loc[len(coefficients)] = coefficients_array[0] #use [0] because coefficients are stored as a column vectors
 
-    result_table.to_csv("ml_algorithms/results/logistic_regression/log_reg.csv")
+    result_table.to_csv("ml_algorithms/results/logistic_regression/log_reg_scores.csv")
+    count_table.to_csv("ml_algorithms/results/logistic_regression/log_reg_counts.csv")
     coefficients.to_csv("ml_algorithms/results/logistic_regression/log_reg_coefficients.csv")
 
 
@@ -172,6 +182,7 @@ def logistic_regression_with_feature_selection():
     '''
     all_features = create_list_of_all_features(['genexp', 'gpa', 'snps'])
     result_table = pd.DataFrame(columns = ['drug', 'features', 'best C', 'train samples', 'features used', 'precision_s', 'precision_r', 'recall_s', 'recall_r', 'accuracy'])
+    count_table = pd.DataFrame(columns = ['drug', 'features', 'test samples', 'predicted_s', 'real_s', 'predicted_r', 'real_r'])
 
     for drug in drugs:
         for j in [1, 3, 4, 5]: #repeat for all combinations of two or more feature types
@@ -196,6 +207,9 @@ def logistic_regression_with_feature_selection():
             
             Y_predict = log_reg.predict(X_test)
 
+            #get the total number of predicted and real susceptible and resistent samples
+            predicted_classes, real_classes = _get_number_of_samples_by_class(Y_predict, Y_test)
+
             #get all the features with coefficients different from 0
             number_of_features_used = len([coefficient for coefficient in log_reg.coef_[0] if not math.isclose(coefficient, 0., abs_tol = 1e-15)])
 
@@ -203,10 +217,13 @@ def logistic_regression_with_feature_selection():
                                                 precision_score(Y_test, Y_predict, pos_label = 0), precision_score(Y_test, Y_predict, pos_label = 1), 
                                                 recall_score(Y_test, Y_predict, pos_label = 0), recall_score(Y_test, Y_predict, pos_label = 1), 
                                                 accuracy_score(Y_test, Y_predict)]
+            count_table.loc[len(count_table)] = [drug, features_strings[j], X_test.shape[0], predicted_classes[0],
+                                                 real_classes[0], predicted_classes[1], real_classes[1]]
             
             print("Iteration")
 
-    result_table.to_csv("ml_algorithms/results/logistic_regression/log_reg_relevant_features.csv")
+    result_table.to_csv("ml_algorithms/results/logistic_regression/log_reg_relevant_features_scores.csv")
+    count_table.to_csv("ml_algorithms/results/logistic_regression/log_reg_relevant_features_counts.csv")
 
 
 def pca():
@@ -266,15 +283,7 @@ def linear_discriminant_analysis():
             Y_predict = lda.predict(X_test.toarray())
 
             #get the total number of predicted and real susceptible and resistent samples
-            _, predicted_classes = np.unique(Y_predict, return_counts=True)
-            _, real_classes = np.unique(Y_test, return_counts=True)
-
-            if len(predicted_classes) == 1: #case when all samples are classified into the same class:
-            #in this case predicted_classes has only one element, so we have to add a 0 in the right position of the list
-                if math.isclose(Y_predict[0], 0.):
-                    predicted_classes = [len(Y_predict), 0]
-                else:
-                    predicted_classes = [0, len(Y_predict)]
+            predicted_classes, real_classes = _get_number_of_samples_by_class(Y_predict, Y_test)
 
             result_table.loc[len(result_table)] = [drug, features_strings[j], precision_score(Y_test, Y_predict, pos_label = 0), 
                                                    precision_score(Y_test, Y_predict, pos_label = 1), recall_score(Y_test, Y_predict, pos_label = 0),
@@ -319,15 +328,7 @@ def quadratic_discriminant_analysis():
             Y_predict = lda.predict(X_test_projected)
 
             #get the total number of predicted and real susceptible and resistent samples
-            _, predicted_classes = np.unique(Y_predict, return_counts=True)
-            _, real_classes = np.unique(Y_test, return_counts=True)
-
-            if len(predicted_classes) == 1: #case when all samples are classified into the same class:
-            #in this case predicted_classes has only one element, so we have to add a 0 in the right position of the list
-                if math.isclose(Y_predict[0], 0.):
-                    predicted_classes = [len(Y_predict), 0]
-                else:
-                    predicted_classes = [0, len(Y_predict)]
+            predicted_classes, real_classes = _get_number_of_samples_by_class(Y_predict, Y_test)
 
             result_table.loc[len(result_table)] = [drug, features_strings[j], precision_score(Y_test, Y_predict, pos_label = 0), 
                                                    precision_score(Y_test, Y_predict, pos_label = 1), recall_score(Y_test, Y_predict, pos_label = 0),
@@ -343,6 +344,6 @@ def quadratic_discriminant_analysis():
 
 
 if(__name__ == '__main__'):
-    linear_discriminant_analysis()
+    quadratic_discriminant_analysis()
 
 

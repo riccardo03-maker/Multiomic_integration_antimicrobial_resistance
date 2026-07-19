@@ -1,0 +1,17 @@
+,drug,features,test samples,predicted_s,real_s,predicted_r,real_r
+0,Cef,genexp+snps,67,36,34,31,33
+1,Cef,genexp+gpa,67,32,34,35,33
+2,Cef,genexp+gpa+snps,67,34,34,33,33
+3,Cef,gpa+snps,67,33,34,34,33
+4,Cip,genexp+snps,72,33,32,39,40
+5,Cip,genexp+gpa,72,35,32,37,40
+6,Cip,genexp+gpa+snps,72,34,32,38,40
+7,Cip,gpa+snps,72,35,32,37,40
+8,Mer,genexp+snps,71,16,22,55,49
+9,Mer,genexp+gpa,71,18,22,53,49
+10,Mer,genexp+gpa+snps,71,17,22,54,49
+11,Mer,gpa+snps,71,12,22,59,49
+12,Tob,genexp+snps,82,56,56,26,26
+13,Tob,genexp+gpa,82,56,56,26,26
+14,Tob,genexp+gpa+snps,82,56,56,26,26
+15,Tob,gpa+snps,82,61,56,21,26

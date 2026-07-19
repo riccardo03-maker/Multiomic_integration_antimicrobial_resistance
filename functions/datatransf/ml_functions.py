@@ -5,6 +5,8 @@ from scipy.sparse import load_npz, hstack, csr_array
 import numpy as np
 import pandas as pd
 from collections import Counter
+import math
+
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import scale
 
@@ -143,3 +145,38 @@ def _get_non_zero_features(drug: str):
     relevant_features_types = list(data.T.iloc[0])
 
     return relevant_features, relevant_features_types
+
+
+def _get_number_of_samples_by_class(predicted_classes: np.ndarray, real_classes: np.ndarray):
+    '''
+    This function is used after a classification pipeline, by giving as input the test set with the real output classes and the set with
+    the predicted classes. The function counts how many samples are classified in each class, both for the real classes and 
+    for the predicted classes.
+
+    Parameters:
+    -----------
+        predicted_classes: np.ndarray
+            The dataset with the predicted class of each sample in the test set.
+        real_classes: np.ndarray
+            The test set with the real class of each sample
+    Returns:
+    --------
+        predict_count: list
+            The number of samples in each class in the predicted set. The first element of the list is the number of samples in class
+            0 (susceptible), while the second element of the list is the number of samples in class 1 (resistent).
+        real_count: list
+            The number of samples in each class in the real test set. The first element of the list is the number of samples in class
+            0 (susceptible), while the second element of the list is the number of samples in class 1 (resistent).
+    '''
+    #get the total number of predicted and real susceptible and resistent samples
+    _, predicted_classes_counts = np.unique(predicted_classes, return_counts=True)
+    _, real_classes_counts = np.unique(real_classes, return_counts=True)
+
+    if len(predicted_classes_counts) == 1: #case when all samples are classified into the same class:
+        #in this case predicted_classes has only one element, so we have to add a 0 in the right position of the list
+        if math.isclose(predicted_classes[0], 0.):
+            predicted_classes_counts = [len(predicted_classes), 0]
+        else:
+            predicted_classes_counts = [0, len(predicted_classes)]
+    
+    return predicted_classes_counts, real_classes_counts
