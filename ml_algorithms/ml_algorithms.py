@@ -3,10 +3,11 @@
 
 from sklearn.model_selection import cross_val_score, StratifiedKFold
 from sklearn.metrics import f1_score, precision_score, recall_score, accuracy_score
-from sklearn import svm
+from sklearn.svm import LinearSVC
 from sklearn.linear_model import LogisticRegression, LogisticRegressionCV
 from sklearn.decomposition import PCA
 from sklearn.preprocessing import scale
+from sklearn.discriminant_analysis import LinearDiscriminantAnalysis, QuadraticDiscriminantAnalysis
 
 from datatransf import weighted_train_test_split, _get_non_zero_features, create_list_of_all_features
 import numpy as np
@@ -59,7 +60,7 @@ def svm_paper_cv():
             #use a seed for random number generation, so that the splitting between train and test set is always
             #the same for the same drug, and results can be compared more easily
 
-            svm_model = svm.LinearSVC(penalty = 'l1', loss = 'squared_hinge', max_iter = 1000000, tol = 0.000001,
+            svm_model = LinearSVC(penalty = 'l1', loss = 'squared_hinge', max_iter = 1000000, tol = 0.000001,
                                       class_weight = "balanced", dual = False, random_state = 1, C = c_params[j][i])
             cv_scores = np.zeros(5)
 
@@ -105,7 +106,7 @@ def svm_paper_test(standardize: bool = False):
         X_train, X_test, Y_train, Y_test = weighted_train_test_split(drug = drugs[i], features = features[i], test_size = 0.2, 
                                                     standardize = standardize, random_state  = 42)
 
-        svm_model = svm.LinearSVC(penalty = 'l1', loss = 'squared_hinge', max_iter = 1000000, tol = 0.000001,
+        svm_model = LinearSVC(penalty = 'l1', loss = 'squared_hinge', max_iter = 1000000, tol = 0.000001,
                                     class_weight = "balanced", dual = False, random_state = 1, C = c_params[i])
         svm_model.fit(X_train, Y_train)
         Y_predict = svm_model.predict(X_test)
@@ -119,7 +120,8 @@ def logistic_regression():
     It uses an l1 (Lasso) regularization, so that as many features as possible are ignored
     For each drug and each combination of features, the full dataset is split into a training and a test set. Then, the model is fitted
     on the whole train set and its performances evaluated on the test set, using as scores precision and recall for both classes
-    (susceptible (0) and resistent (1)).
+    (susceptible (0) and resistent (1)). Moreover, the number of samples in the test set classified as either suceptible or resistent 
+    are counted and compared with the real number of susceptible and resistent samples.
 
     The best value of C (which is the inverse of the regularization strength) is selected through a 5-fold cross-validation procedure
     applied on the train set (by ranking performances based on the accuracy).
@@ -201,6 +203,7 @@ def logistic_regression_with_feature_selection():
                                                 precision_score(Y_test, Y_predict, pos_label = 0), precision_score(Y_test, Y_predict, pos_label = 1), 
                                                 recall_score(Y_test, Y_predict, pos_label = 0), recall_score(Y_test, Y_predict, pos_label = 1), 
                                                 accuracy_score(Y_test, Y_predict)]
+            
             print("Iteration")
 
     result_table.to_csv("ml_algorithms/results/logistic_regression/log_reg_relevant_features.csv")
@@ -240,7 +243,106 @@ def pca():
         targets.to_csv("ml_algorithms/results/pca/pca_" + drug + ".csv")
 
 
+def linear_discriminant_analysis():
+    '''
+    Implement a linear discriminant analysis to predict antimicrobial resistance.
+
+    The pipeline is repeated for each drug and for each combination of input features. The LDA is performed using the singular value
+    decomposition, since the calculation of the covariance matrix would require a lot of time because of the huge number of features.
+
+    The classification performances are evaluated using the same scores applied in the logistic regression. Moreover, the number of
+    samples in the test set classified as either suceptible or resistent are counted and compared with the real number of susceptible
+    and resistent samples.
+    '''
+    result_table = pd.DataFrame(columns = ['drug', 'features', 'precision_s', 'precision_r', 'recall_s', 'recall_r', 'accuracy'])
+    count_table = pd.DataFrame(columns = ['drug', 'features', 'test samples', 'predicted_s', 'real_s', 'predicted_r', 'real_r'])
+
+    for drug in drugs:
+        for j, features in enumerate(all_combinations_of_features):
+            X_train, X_test, Y_train, Y_test = weighted_train_test_split(drug = drug, features = features, test_size = 0.2, 
+                                                    standardize = True, random_state  = 42)
+            lda = LinearDiscriminantAnalysis(solver = 'svd')
+            lda.fit(X_train.toarray(), Y_train)
+            Y_predict = lda.predict(X_test.toarray())
+
+            #get the total number of predicted and real susceptible and resistent samples
+            _, predicted_classes = np.unique(Y_predict, return_counts=True)
+            _, real_classes = np.unique(Y_test, return_counts=True)
+
+            if len(predicted_classes) == 1: #case when all samples are classified into the same class:
+            #in this case predicted_classes has only one element, so we have to add a 0 in the right position of the list
+                if math.isclose(Y_predict[0], 0.):
+                    predicted_classes = [len(Y_predict), 0]
+                else:
+                    predicted_classes = [0, len(Y_predict)]
+
+            result_table.loc[len(result_table)] = [drug, features_strings[j], precision_score(Y_test, Y_predict, pos_label = 0), 
+                                                   precision_score(Y_test, Y_predict, pos_label = 1), recall_score(Y_test, Y_predict, pos_label = 0),
+                                                    recall_score(Y_test, Y_predict, pos_label = 1), accuracy_score(Y_test, Y_predict)]
+            count_table.loc[len(count_table)] = [drug, features_strings[j], X_test.shape[0], predicted_classes[0],
+                                                 real_classes[0], predicted_classes[1], real_classes[1]]
+            #0 is susceptible and 1 is resistent
+
+            print("Iteration")
+    
+    result_table.to_csv("ml_algorithms/results/lda/lda_scores.csv")
+    count_table.to_csv("ml_algorithms/results/lda/lda_counts.csv")
+
+
+def quadratic_discriminant_analysis():
+    '''
+    Implement a quadratic discriminant analysis to predict antimicrobial resistance.
+
+    The pipeline is repeated for each drug and for each combination of input features. Before applying the QDA, a dimensionality reduction
+    is required to calculate and invert the covariance matrices. The dimensionality reduction is done here using PCA, keeping 200 components.
+
+    The classification performances are evaluated using the same scores applied in the logistic regression. Moreover, the number of
+    samples in the test set classified as either suceptible or resistent are counted and compared with the real number of susceptible
+    and resistent samples.
+    '''
+    result_table = pd.DataFrame(columns = ['drug', 'features', 'precision_s', 'precision_r', 'recall_s', 'recall_r', 'accuracy'])
+    count_table = pd.DataFrame(columns = ['drug', 'features', 'test samples', 'predicted_s', 'real_s', 'predicted_r', 'real_r'])
+
+    for drug in drugs:
+        for j, features in enumerate(all_combinations_of_features):
+            X_train, X_test, Y_train, Y_test = weighted_train_test_split(drug = drug, features = features, test_size = 0.2, 
+                                                    standardize = True, random_state  = 42)
+            
+            #apply dimensionality reduction through PCA
+            pca = PCA(n_components = 200)
+            pca.fit(X_train)
+            X_train_projected = pca.transform(X_train)
+            X_test_projected = pca.transform(X_test)
+
+            lda = QuadraticDiscriminantAnalysis(solver = 'eigen', shrinkage = 'auto')
+            lda.fit(X_train_projected, Y_train)
+            Y_predict = lda.predict(X_test_projected)
+
+            #get the total number of predicted and real susceptible and resistent samples
+            _, predicted_classes = np.unique(Y_predict, return_counts=True)
+            _, real_classes = np.unique(Y_test, return_counts=True)
+
+            if len(predicted_classes) == 1: #case when all samples are classified into the same class:
+            #in this case predicted_classes has only one element, so we have to add a 0 in the right position of the list
+                if math.isclose(Y_predict[0], 0.):
+                    predicted_classes = [len(Y_predict), 0]
+                else:
+                    predicted_classes = [0, len(Y_predict)]
+
+            result_table.loc[len(result_table)] = [drug, features_strings[j], precision_score(Y_test, Y_predict, pos_label = 0), 
+                                                   precision_score(Y_test, Y_predict, pos_label = 1), recall_score(Y_test, Y_predict, pos_label = 0),
+                                                    recall_score(Y_test, Y_predict, pos_label = 1), accuracy_score(Y_test, Y_predict)]
+            count_table.loc[len(count_table)] = [drug, features_strings[j], X_test_projected.shape[0], predicted_classes[0],
+                                                 real_classes[0], predicted_classes[1], real_classes[1]]
+            #0 is susceptible and 1 is resistent
+
+            print("Iteration")
+    
+    result_table.to_csv("ml_algorithms/results/lda/qda_scores.csv")
+    count_table.to_csv("ml_algorithms/results/lda/qda_counts.csv")
+
+
 if(__name__ == '__main__'):
-    pca()
+    linear_discriminant_analysis()
 
 
