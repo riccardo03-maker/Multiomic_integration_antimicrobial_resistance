@@ -8,6 +8,7 @@ from sklearn.linear_model import LogisticRegression, LogisticRegressionCV
 from sklearn.decomposition import PCA
 from sklearn.preprocessing import scale
 from sklearn.discriminant_analysis import LinearDiscriminantAnalysis, QuadraticDiscriminantAnalysis
+from sklearn.neighbors import KNeighborsClassifier
 
 from datatransf import weighted_train_test_split, _get_non_zero_features, create_list_of_all_features, _get_number_of_samples_by_class
 import numpy as np
@@ -65,7 +66,7 @@ def svm_paper_cv():
             cv_scores = np.zeros(5)
 
             for k in range(5):
-                #Perform a 10-fold cross validation 5 times, and average over the different results
+                #Perform a 5-fold cross validation 5 times, and average over the different results
                 cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=k)
                 cv_score = cross_val_score(svm_model, X=X_train, y=Y_train, cv=cv, scoring = 'f1_macro', n_jobs = 1)
                 cv_scores[k] = cv_score.mean()
@@ -110,7 +111,8 @@ def svm_paper_test(standardize: bool = False):
                                     class_weight = "balanced", dual = False, random_state = 1, C = c_params[i])
         svm_model.fit(X_train, Y_train)
         Y_predict = svm_model.predict(X_test)
-        print("F1 score macro " + drugs[i] + ": " + str(f1_score(Y_test, Y_predict, average = 'macro')))
+        #print("F1 score macro " + drugs[i] + ": " + str(f1_score(Y_test, Y_predict, average = 'macro')))
+        print("Accuracy " + drugs[i] + ": " + str(accuracy_score(Y_test, Y_predict)))
 
 
 def logistic_regression():
@@ -343,7 +345,78 @@ def quadratic_discriminant_analysis():
     count_table.to_csv("ml_algorithms/results/lda/qda_counts.csv")
 
 
+def knn_performance():
+    '''
+    Measure the performance of the K-Nearest Neighbours algorithm for different values of K.
+
+    For each drug and each combination of features, a 5-fold cross-validation is performed for different values of K. The accuracy
+    score is computed as the average of the accuracies computed at each iteration of the cross-validation. In this way the best value
+    of K is selected for each combination of features.
+    '''
+    best_values_of_k = pd.DataFrame(columns=['drug', 'features', 'best_k'])
+    for drug in drugs:
+        for j, features in enumerate(all_combinations_of_features):
+            X_train, X_test, Y_train, Y_test = weighted_train_test_split(drug = drug, features = features, test_size = 0.2, 
+                                                    standardize = True, random_state  = 42)
+            
+            performances = {}
+            
+            for k in [5, 8, 10, 12, 15, 18, 20]:
+                knn = KNeighborsClassifier(n_neighbors=k)
+                cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=k)
+                cv_scores = cross_val_score(knn, X=X_train, y=Y_train, cv=cv, scoring = 'accuracy', n_jobs = 1)
+                performances.update({cv_scores.mean() : k})
+            
+            best_performance = max(performances.keys())
+            best_k = performances[best_performance]
+            best_values_of_k.loc[len(best_values_of_k)] = [drug, features_strings[j], best_k]
+
+            print("Iteration")
+    
+    best_values_of_k.to_csv("ml_algorithms/results/knn/best_values_of_k.csv")
+
+
+def knn():
+    '''
+    Implement a knn pipeline using the best values of k obtained through the knn_performance function.
+
+    The pipeline is repeated for each drug and each combination of features. The classification performances are evaluated using the 
+    same scores applied in the logistic regression. Moreover, the number of samples in the test set classified as either suceptible 
+    or resistent are counted and compared with the real number of susceptible and resistent samples.
+    '''
+    result_table = pd.DataFrame(columns = ['drug', 'features', 'precision_s', 'precision_r', 'recall_s', 'recall_r', 'accuracy'])
+    count_table = pd.DataFrame(columns = ['drug', 'features', 'test samples', 'predicted_s', 'real_s', 'predicted_r', 'real_r'])
+
+    best_k_values = pd.read_csv("ml_algorithms/results/knn/best_values_of_k.csv")['best_k'].to_list()
+    iteration_number = 0
+
+    for drug in drugs:
+        for j, features in enumerate(all_combinations_of_features):
+            X_train, X_test, Y_train, Y_test = weighted_train_test_split(drug = drug, features = features, test_size = 0.2, 
+                                                    standardize = True, random_state  = 42)
+
+            knn = KNeighborsClassifier(n_neighbors = best_k_values[iteration_number])
+            knn.fit(X_train, Y_train)
+            Y_predict = knn.predict(X_test)
+
+            #get the total number of predicted and real susceptible and resistent samples
+            predicted_classes, real_classes = _get_number_of_samples_by_class(Y_predict, Y_test)
+
+            result_table.loc[len(result_table)] = [drug, features_strings[j], precision_score(Y_test, Y_predict, pos_label = 0), 
+                                                   precision_score(Y_test, Y_predict, pos_label = 1), recall_score(Y_test, Y_predict, pos_label = 0),
+                                                    recall_score(Y_test, Y_predict, pos_label = 1), accuracy_score(Y_test, Y_predict)]
+            count_table.loc[len(count_table)] = [drug, features_strings[j], X_test.shape[0], predicted_classes[0],
+                                                 real_classes[0], predicted_classes[1], real_classes[1]]
+            #0 is susceptible and 1 is resistent
+
+            print("Iteration")
+            iteration_number += 1
+    
+    result_table.to_csv("ml_algorithms/results/knn/knn_scores.csv")
+    count_table.to_csv("ml_algorithms/results/knn/knn_counts.csv")
+
+
 if(__name__ == '__main__'):
-    quadratic_discriminant_analysis()
+    svm_paper_test()
 
 
