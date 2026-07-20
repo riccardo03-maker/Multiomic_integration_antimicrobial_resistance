@@ -67,7 +67,7 @@ def test_correct_train_test_split():
         Y_test.shape[1]
 
     
-def test_correct_train_test_split():
+def test_correct_train_test_split_full_y():
     '''
     This test is identical to the previous one, except that the parameter 'full_Y' of the weighted_train_test_split function is True.
 
@@ -92,6 +92,45 @@ def test_correct_train_test_split():
     
     assert(Y_train.shape[1] == 3)
     assert(Y_test.shape[1] == 3)
+
+
+def test_correct_train_test_validation_split():
+    '''
+    Test the correct split into train, test and validation set, when the input features are data about gene expression and gpa, 
+    while output classes are susceptibility or resistance to tobramycin.
+
+    GIVEN: input features about gene expression and gpa, and output classes relative to tobramycin susceptibility or resistance.
+    WHEN: I split these data into train, validation and test set (10% validation set, 20% test set).
+    THEN: both train, validation and test input features sets have 22031 columns, and the sum of the number of rows of train, validation and
+    test sets is 406 (there are 8 NaN for tobramycin). At the same time, train, validation and test output targets sets have one column
+    each, and a total of 406 rows. Input features sets must be scipy.sparse.csr_array objects, while output targets sets must be 
+    numpy.ndarray objects.
+    '''
+    X_train, X_validation, X_test, Y_train, Y_validation, Y_test = weighted_train_test_split(drug = 'Tob', features = ['genexp', 'gpa'], 
+                                                                    test_size = 0.2, validation_size = 0.1)
+
+    assert(isinstance(X_train, csr_array))
+    assert(isinstance(X_validation, csr_array))
+    assert(isinstance(X_test, csr_array))
+    assert(isinstance(Y_train, np.ndarray))
+    assert(isinstance(Y_validation, np.ndarray))
+    assert(isinstance(Y_test, np.ndarray))
+
+    assert(X_train.shape[0] + X_validation.shape[0] + X_test.shape[0] == 406)
+    assert(X_train.shape[1] == 22031)
+    assert(X_validation.shape[1] == 22031)
+    assert(X_test.shape[1] == 22031)
+
+    assert(Y_train.shape[0] + Y_validation.shape[0] + Y_test.shape[0] == 406)
+    
+    #test that an error occurs when asking for the second element of the shape tuple of the array, meaning that
+    #the array is one-dimensional
+    with pytest.raises(IndexError):
+        Y_train.shape[1]
+    with pytest.raises(IndexError):
+        Y_validation.shape[1]
+    with pytest.raises(IndexError):
+        Y_test.shape[1]
 
 
 def test_correct_standardization():

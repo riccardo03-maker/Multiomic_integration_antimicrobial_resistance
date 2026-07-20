@@ -14,10 +14,12 @@ __author__=['Riccardo Grandicelli']
 __email__=['riccardograndicelli03@gmail.com']
 
 
-def weighted_train_test_split(drug: str, features: list, test_size: float, standardize: bool = False, random_state: int = None, full_Y: bool = False):
+def weighted_train_test_split(drug: str, features: list, test_size: float, validation_size: float = None, standardize: bool = False, 
+                              random_state: int = None, full_Y: bool = False):
     '''
     Given a drug and one or more set of features (gene expression, gpa or snps), this function divides those features data 
-    into train and test set, keeping in both sets the same proportion between susceptible and resistant to a certain drug.
+    into train and test set, keeping in both sets the same proportion between susceptible and resistant to a certain drug. If required,
+    it can also create a validation set alongside training and test sets.
 
     If required, this function can also standardize gene expression data (they are already standardized, but before the division
     between train and test sets, so train and test data are not really independent). Gpa and snps data don't need to be standardized
@@ -33,6 +35,8 @@ def weighted_train_test_split(drug: str, features: list, test_size: float, stand
             element in the list is not one of these three, the code raises a ValueError.
         test_size: float
             The percentage of dataset that will be used as test set.
+        validation_size: float (default: None)
+            The percentage of dataset that will be used as validation set. If not provided, only train and test sets will be created.
         standardize: bool (default: False)
             If True, standardize gene expression data after the train-test division.
         random_state: int (default: None)
@@ -47,8 +51,6 @@ def weighted_train_test_split(drug: str, features: list, test_size: float, stand
             Training and test sets of input features.
         Y_train, Y_test: np.ndarray or pd.Dataframe
             Training and test sets of output classes.
-        strains_train, strains_test: pd.DataFrame
-            The strains (and relative indexes) present in train and test sets, respectively.
     Raises
     ------
         ValueError:
@@ -76,6 +78,10 @@ def weighted_train_test_split(drug: str, features: list, test_size: float, stand
     Y_train_s, Y_test_s = train_test_split(Y_susceptible, test_size=test_size, random_state=random_state)
     Y_train_r, Y_test_r = train_test_split(Y_resistent, test_size=test_size, random_state=random_state)
 
+    if validation_size is not None:
+        Y_train_s, Y_validation_s = train_test_split(Y_train_s, test_size = validation_size / (1 - test_size), random_state = random_state)
+        Y_train_r, Y_validation_r = train_test_split(Y_train_r, test_size = validation_size / (1 - test_size), random_state = random_state)
+
     #separate output classes from "Index" and "Strain" columns
     Y_train_full=pd.concat([Y_train_s, Y_train_r]) #three columns: drug, index and strain
     Y_test_full=pd.concat([Y_test_s, Y_test_r])
@@ -91,6 +97,15 @@ def weighted_train_test_split(drug: str, features: list, test_size: float, stand
     else:
         Y_train = np.array(Y_train_full[drug], dtype = np.float64)
         Y_test = np.array(Y_test_full[drug], dtype = np.float64)
+
+    #do the same operations for the validation set if present
+    if validation_size is not None:
+        Y_validation_full = pd.concat([Y_validation_s, Y_validation_r])
+        validation_indexes = Y_validation_full["Index"].tolist()
+        if full_Y:
+            Y_validation = Y_validation_full
+        else:
+            Y_validation = np.array(Y_validation_full[drug], dtype = np.float64)
 
     for i, feature in enumerate(Counter(features).keys()): #keep only unique values of the list of features, to avoid issues with repetitions
         if feature not in ['genexp', 'gpa', 'snps']:
@@ -116,8 +131,22 @@ def weighted_train_test_split(drug: str, features: list, test_size: float, stand
         else:
             X_train = hstack([X_train, new_features_train], format = "csr")
             X_test = hstack([X_test, new_features_test], format = "csr")
+        
+        #do the same operations for the validation set if present
+        if validation_size is not None:
+            new_features_validation = new_features[validation_indexes]
+            if standardize and feature == 'genexp':
+                new_features_validation = scale(new_features_validation.toarray())
+                new_features_validation = csr_array(new_features_validation)
+            if i == 0:
+                X_validation = new_features_validation
+            else:
+                X_validation = hstack([X_validation, new_features_validation], format = "csr")
 
-    return X_train, X_test, Y_train, Y_test
+    if validation_size is not None:
+        return X_train, X_validation, X_test, Y_train, Y_validation, Y_test
+    else:
+        return X_train, X_test, Y_train, Y_test
 
 
 def _get_non_zero_features(drug: str):
