@@ -3,12 +3,13 @@
 
 from sklearn.model_selection import cross_val_score, StratifiedKFold
 from sklearn.metrics import f1_score, precision_score, recall_score, accuracy_score
-from sklearn.svm import LinearSVC
+from sklearn.svm import LinearSVC, SVC
 from sklearn.linear_model import LogisticRegression, LogisticRegressionCV
 from sklearn.decomposition import PCA
 from sklearn.preprocessing import scale
 from sklearn.discriminant_analysis import LinearDiscriminantAnalysis, QuadraticDiscriminantAnalysis
 from sklearn.neighbors import KNeighborsClassifier
+from sklearn.manifold import Isomap
 
 from datatransf import weighted_train_test_split, _get_non_zero_features, create_list_of_all_features, _get_number_of_samples_by_class
 import numpy as np
@@ -228,40 +229,6 @@ def logistic_regression_with_feature_selection():
     count_table.to_csv("ml_algorithms/results/logistic_regression/log_reg_relevant_features_counts.csv")
 
 
-def pca():
-    '''
-    Implement a PCA for all the three types of features, to see if two principal components are enough to split samples correctly
-    into the two classes.
-    '''
-    for drug in drugs:
-        #create datasets of input features and output targets, but without dividing into train and test sets
-        targets = pd.read_csv("./transformed_data/targets/targets.csv")
-        columns = [c for c in targets.columns if c in ["Index", "Strain", drug]]
-        targets = targets[columns]
-        targets=targets.dropna(subset=drug)
-
-        #get the indexes of the remaining samples (those without NA for the drug considered in this iteration)
-        indexes_to_keep = targets["Index"]
-
-        for feature in ['genexp', 'gpa', 'snps']:
-            features = load_npz("./transformed_data/features/" + feature + "_features.npz")
-            features = features[indexes_to_keep]
-            if feature == 'genexp': #standardize
-                features = scale(features.toarray()) #standardization cannot be done using sparse matrices, so we convert into np.ndarray
-                features = csr_array(features)
-
-            pca = PCA(n_components = 2)
-            pca.fit(features)
-            samples_projected = pca.transform(features)
-
-            targets.insert(len(targets.columns), feature + "_1", samples_projected[:, 0])
-            targets.insert(len(targets.columns), feature + "_2", samples_projected[:, 1])
-
-            print("Iteration")
-        
-        targets.to_csv("ml_algorithms/results/pca/pca_" + drug + ".csv")
-
-
 def linear_discriminant_analysis():
     '''
     Implement a linear discriminant analysis to predict antimicrobial resistance.
@@ -416,7 +383,119 @@ def knn():
     count_table.to_csv("ml_algorithms/results/knn/knn_counts.csv")
 
 
+def svc(kernel: str):
+    '''
+    Implement the support vector classification to predict antimicrobial resistance. This does not take into account the methods of the
+    reference paper.
+
+    Parameters
+    ----------
+        kernel: str
+            The kernel used for SVC. This parameter is directly passed to the SVC object of scikit-learn, so the accepted values
+            can be found in the sklearn.svm.SVC documentation
+    References
+    ----------
+        sklearn.svm.SVC documentation: https://scikit-learn.org/stable/modules/generated/sklearn.svm.SVC.html#sklearn.svm.SVC
+    '''
+    result_table = pd.DataFrame(columns = ['drug', 'features', 'precision_s', 'precision_r', 'recall_s', 'recall_r', 'accuracy'])
+    count_table = pd.DataFrame(columns = ['drug', 'features', 'test samples', 'predicted_s', 'real_s', 'predicted_r', 'real_r'])
+
+    for drug in drugs:
+        for j, features in enumerate(all_combinations_of_features):
+            X_train, X_test, Y_train, Y_test = weighted_train_test_split(drug = drug, features = features, test_size = 0.2, 
+                                                    standardize = True, random_state  = 42)
+            #using always the same random state, the splitting between train and test obtained in this function is the same of
+            #the previous function. In this way the test set used is completely independent from the set used for cross-validation
+
+            svc = SVC(C = 0.1, kernel = kernel, tol = 1e-6)
+            svc.fit(X_train, Y_train)
+            Y_predict = svc.predict(X_test)
+
+            #get the total number of predicted and real susceptible and resistent samples
+            predicted_classes, real_classes = _get_number_of_samples_by_class(Y_predict, Y_test)
+
+            result_table.loc[len(result_table)] = [drug, features_strings[j], precision_score(Y_test, Y_predict, pos_label = 0), 
+                                                   precision_score(Y_test, Y_predict, pos_label = 1), recall_score(Y_test, Y_predict, pos_label = 0),
+                                                    recall_score(Y_test, Y_predict, pos_label = 1), accuracy_score(Y_test, Y_predict)]
+            count_table.loc[len(count_table)] = [drug, features_strings[j], X_test.shape[0], predicted_classes[0],
+                                                 real_classes[0], predicted_classes[1], real_classes[1]]
+            #0 is susceptible and 1 is resistent
+
+            print("Iteration")
+    
+    result_table.to_csv("ml_algorithms/results/svc/svc_scores_" + kernel + ".csv")
+    count_table.to_csv("ml_algorithms/results/svc/svc_counts_" + kernel + ".csv")
+
+
+def pca():
+    '''
+    Implement a PCA for all the three types of features, to see if two principal components are enough to split samples correctly
+    into the two classes.
+    '''
+    for drug in drugs:
+        #create datasets of input features and output targets, but without dividing into train and test sets
+        targets = pd.read_csv("./transformed_data/targets/targets.csv")
+        columns = [c for c in targets.columns if c in ["Index", "Strain", drug]]
+        targets = targets[columns]
+        targets=targets.dropna(subset=drug)
+
+        #get the indexes of the remaining samples (those without NA for the drug considered in this iteration)
+        indexes_to_keep = targets["Index"]
+
+        for feature in ['genexp', 'gpa', 'snps']:
+            features = load_npz("./transformed_data/features/" + feature + "_features.npz")
+            features = features[indexes_to_keep]
+            if feature == 'genexp': #standardize
+                features = scale(features.toarray()) #standardization cannot be done using sparse matrices, so we convert into np.ndarray
+                features = csr_array(features)
+
+            pca = PCA(n_components = 2)
+            pca.fit(features)
+            samples_projected = pca.transform(features)
+
+            targets.insert(len(targets.columns), feature + "_1", samples_projected[:, 0])
+            targets.insert(len(targets.columns), feature + "_2", samples_projected[:, 1])
+
+            print("Iteration")
+        
+        targets.to_csv("ml_algorithms/results/pca/pca_" + drug + ".csv")
+
+
+def isomap():
+    '''
+    Implement a Isomap for all the three types of features, to see if two components are enough to split samples correctly
+    into the two classes.
+    '''
+    for drug in drugs:
+        #create datasets of input features and output targets, but without dividing into train and test sets
+        targets = pd.read_csv("./transformed_data/targets/targets.csv")
+        columns = [c for c in targets.columns if c in ["Index", "Strain", drug]]
+        targets = targets[columns]
+        targets=targets.dropna(subset=drug)
+
+        #get the indexes of the remaining samples (those without NA for the drug considered in this iteration)
+        indexes_to_keep = targets["Index"]
+
+        for feature in ['genexp', 'gpa', 'snps']:
+            features = load_npz("./transformed_data/features/" + feature + "_features.npz")
+            features = features[indexes_to_keep]
+            if feature == 'genexp': #standardize
+                features = scale(features.toarray()) #standardization cannot be done using sparse matrices, so we convert into np.ndarray
+                features = csr_array(features)
+
+            isomap = Isomap(n_components = 2, n_neighbors = 20)
+            isomap.fit(features)
+            samples_projected = isomap.embedding_
+
+            targets.insert(len(targets.columns), feature + "_1", samples_projected[:, 0])
+            targets.insert(len(targets.columns), feature + "_2", samples_projected[:, 1])
+
+            print("Iteration")
+        
+        targets.to_csv("ml_algorithms/results/dim_reduction/isomap/isomap_" + drug + ".csv")
+
+
 if(__name__ == '__main__'):
-    svm_paper_test()
+    isomap()
 
 
