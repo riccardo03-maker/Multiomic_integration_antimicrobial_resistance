@@ -383,57 +383,46 @@ def knn():
     count_table.to_csv("ml_algorithms/results/knn/knn_counts.csv")
 
 
-def svc(kernel: str):
+def svc(kernel: str, C: float, gamma: float = 'scale', degree: int = 3):
     '''
-    Implement the support vector classification to predict antimicrobial resistance. This does not take into account the methods of the
-    reference paper.
-
-    For each drug and each combination of features, the full dataset is split into train, validation and test set, using 10% of samples
-    for validation and 20% of samples for test. Then the best values of the hyperparameters (among a range of possible values) are chosen,
-    according to the combination of hyperparameters with the best classification accuracy over the validation set. Finally, the performance
-    of the model trained on the training set and with the selected hyperparameters is evaluated on the test set.
+    Implement the support vector classification with different kernels to predict antimicrobial resistance. 
+    This does not take into account the methods of the reference paper.
 
     Parameters
     ----------
         kernel: str
             The kernel used for SVC. This parameter is directly passed to the SVC object of scikit-learn, so the accepted values
-            can be found in the sklearn.svm.SVC documentation
+            can be found in the sklearn.svm.SVC documentation.
+        C: float
+            The inverse of the regularization parameter. This parameter is directly passed to the SVC object of scikit-learn.
+        gamma: float or str (default: 'auto')
+            The parameter gamma for the polynomial, Gaussian and sigmoidal kernels. This parameter is directly passed to the SVC object
+            of scikit-learn, so the accepted values can be found in the sklearn.svm.SVC documentation.
+        degree: int (default: 3)
+            The degree of the polynomial kernel function. This parameter is directly passed to the SVC object of scikit-learn.
     References
     ----------
         sklearn.svm.SVC documentation: https://scikit-learn.org/stable/modules/generated/sklearn.svm.SVC.html#sklearn.svm.SVC
     '''
-    result_table = pd.DataFrame(columns = ['drug', 'features', 'best_C', 'precision_s', 'precision_r', 'recall_s', 'recall_r', 'accuracy'])
-    count_table = pd.DataFrame(columns = ['drug', 'features', 'best_C', 'test samples', 'predicted_s', 'real_s', 'predicted_r', 'real_r'])
-
-    #values of C among which the one with best performances will be chosen
-    Cs = np.logspace(-5, 5, 10)
+    result_table = pd.DataFrame(columns = ['drug', 'features', 'precision_s', 'precision_r', 'recall_s', 'recall_r', 'accuracy'])
+    count_table = pd.DataFrame(columns = ['drug', 'features', 'test samples', 'predicted_s', 'real_s', 'predicted_r', 'real_r'])
 
     for drug in drugs:
         for j, features in enumerate(all_combinations_of_features):
-            X_train, X_validation, X_test, Y_train, Y_validation, Y_test = weighted_train_test_split(drug = drug, features = features, 
-                                                    test_size = 0.2, validation_size = 0.1, standardize = True, random_state  = 42)
+            X_train, X_test, Y_train, Y_test = weighted_train_test_split(drug = drug, features = features, 
+                                                    test_size = 0.2, standardize = True, random_state  = 42)
 
-            #try different values of the C parameter
-            C_values_scores = {}
-            for C_value in Cs:
-                svc = SVC(C = C_value, kernel = kernel, tol = 1e-6)
-                svc.fit(X_train, Y_train)
-                Y_predict = svc.predict(X_validation)
-                C_values_scores.update({accuracy_score(Y_validation, Y_predict) : C_value})
-
-            #use the best value of C to train and test the model
-            best_C = C_values_scores[max(C_values_scores.keys())]
-            svc = SVC(C = best_C, kernel = kernel, tol = 1e-6)
+            svc = SVC(C = C, kernel = kernel, tol = 1e-6, degree = degree, gamma = gamma)
             svc.fit(X_train, Y_train)
             Y_predict = svc.predict(X_test)
 
             #get the total number of predicted and real susceptible and resistent samples
             predicted_classes, real_classes = _get_number_of_samples_by_class(Y_predict, Y_test)
 
-            result_table.loc[len(result_table)] = [drug, features_strings[j], best_C, precision_score(Y_test, Y_predict, pos_label = 0), 
+            result_table.loc[len(result_table)] = [drug, features_strings[j], precision_score(Y_test, Y_predict, pos_label = 0), 
                                                    precision_score(Y_test, Y_predict, pos_label = 1), recall_score(Y_test, Y_predict, pos_label = 0),
                                                     recall_score(Y_test, Y_predict, pos_label = 1), accuracy_score(Y_test, Y_predict)]
-            count_table.loc[len(count_table)] = [drug, features_strings[j], best_C, X_test.shape[0], predicted_classes[0],
+            count_table.loc[len(count_table)] = [drug, features_strings[j], X_test.shape[0], predicted_classes[0],
                                                  real_classes[0], predicted_classes[1], real_classes[1]]
             #0 is susceptible and 1 is resistent
 
@@ -441,45 +430,6 @@ def svc(kernel: str):
     
     result_table.to_csv("ml_algorithms/results/svc/svc_scores_" + kernel + ".csv")
     count_table.to_csv("ml_algorithms/results/svc/svc_counts_" + kernel + ".csv")
-
-
-def svc_without_validation():
-    result_table = pd.DataFrame(columns = ['drug', 'features', 'best_C', 'precision_s', 'precision_r', 'recall_s', 'recall_r', 'accuracy'])
-    count_table = pd.DataFrame(columns = ['drug', 'features', 'best_C', 'test samples', 'predicted_s', 'real_s', 'predicted_r', 'real_r'])
-
-    for drug in drugs:
-        for j, features in enumerate(all_combinations_of_features):
-            X_train, X_validation, X_test, Y_train, Y_validation, Y_test = weighted_train_test_split(drug = drug, features = features, 
-                                                    test_size = 0.2, validation_size = 0.1, standardize = True, random_state  = 42)
-
-            #try different values of the C parameter
-            #C_values_scores = {}
-            #for C_value in Cs:
-             #   svc = SVC(C = C_value, kernel = kernel, tol = 1e-6)
-              #  svc.fit(X_train, Y_train)
-               # Y_predict = svc.predict(X_validation)
-                #C_values_scores.update({accuracy_score(Y_validation, Y_predict) : C_value})
-
-            #use the best value of C to train and test the model
-            #best_C = C_values_scores[max(C_values_scores.keys())]
-            svc = SVC(C = 10., kernel = 'linear', tol = 1e-6)
-            svc.fit(X_train, Y_train)
-            Y_predict = svc.predict(X_test)
-
-            #get the total number of predicted and real susceptible and resistent samples
-            predicted_classes, real_classes = _get_number_of_samples_by_class(Y_predict, Y_test)
-
-            result_table.loc[len(result_table)] = [drug, features_strings[j], 0.05, precision_score(Y_test, Y_predict, pos_label = 0), 
-                                                   precision_score(Y_test, Y_predict, pos_label = 1), recall_score(Y_test, Y_predict, pos_label = 0),
-                                                    recall_score(Y_test, Y_predict, pos_label = 1), accuracy_score(Y_test, Y_predict)]
-            count_table.loc[len(count_table)] = [drug, features_strings[j], 0.05, X_test.shape[0], predicted_classes[0],
-                                                 real_classes[0], predicted_classes[1], real_classes[1]]
-            #0 is susceptible and 1 is resistent
-
-            print("Iteration")
-    
-    result_table.to_csv("ml_algorithms/results/svc/svc_scores.csv")
-    count_table.to_csv("ml_algorithms/results/svc/svc_counts.csv")
 
 
 def pca():
@@ -551,6 +501,6 @@ def isomap():
 
 
 if(__name__ == '__main__'):
-    svc(kernel = 'linear')
+    svc(kernel = 'poly', C = 0.1, degree = 3, gamma = 1)
 
 
