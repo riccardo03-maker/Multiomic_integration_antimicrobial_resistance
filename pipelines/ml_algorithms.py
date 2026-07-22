@@ -11,11 +11,12 @@ from sklearn.discriminant_analysis import LinearDiscriminantAnalysis, QuadraticD
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.manifold import Isomap
 
-from datatransf import weighted_train_test_split, _get_non_zero_features, create_list_of_all_features, _get_number_of_samples_by_class
+from ml_functions.ml_functions import weighted_train_test_split, _get_non_zero_features, create_list_of_all_features, _get_number_of_samples_by_class
 import numpy as np
 import pandas as pd
 import math
 from scipy.sparse import load_npz, csr_array
+from collections import Counter
 
 __author__=['Riccardo Grandicelli']
 __email__=['riccardograndicelli03@gmail.com']

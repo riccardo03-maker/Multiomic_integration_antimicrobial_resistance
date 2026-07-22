@@ -1,4 +1,4 @@
-from datatransf import weighted_train_test_split, _get_non_zero_features, _get_number_of_samples_by_class
+from ml_functions import weighted_train_test_split, _get_non_zero_features, _get_number_of_samples_by_class, create_list_of_all_features
 import pytest
 from scipy.sparse import csr_array
 import pandas as pd
@@ -9,6 +9,7 @@ __email__=['riccardograndicelli03@gmail.com']
 
 
 #Testing train test splitting
+
 
 def test_incorrect_drug_input():
     '''
@@ -189,3 +190,21 @@ def test_all_samples_in_one_class():
     assert(predict_counts[1] == 20)
     assert(real_counts[0] == 13)
     assert(real_counts[1] == 7)
+
+
+# Testing creation list of all features
+
+def test_list_of_all_features():
+    '''
+    Test the correct creation of the list of all features, for all the three types of features (gene expression, gpa and snps).
+
+    GIVEN: I am creating a list of features.
+    WHEN: I give as input all the three types of features.
+    THEN: the number of elements in the final list is 94267, and the first element of gpa is in position 6026, while the first element of 
+    snps is in position 22031.
+    '''
+    features_list = create_list_of_all_features(['genexp', 'gpa', 'snps'])
+
+    assert(len(features_list) == 94267)
+    assert(features_list[6026] == ",,aacA4|1")
+    assert(features_list[22031] == "PA14_03290_298867_A_G_T_A|10")

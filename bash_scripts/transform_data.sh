@@ -1,6 +1,6 @@
 #install R and Python requirements
 Rscript R_scripts/install_requirements.R
-python -m pip install functions/
+pip install -r requirements.txt
 
 #decompress raw data
 unzip ./raw_data/features_gpa_expr_snps.zip -d ./raw_data
@@ -15,7 +15,7 @@ mkdir transformed_data/targets
 cp ./raw_data/features_gpa_expr_snps/snps/snps_strains_list.txt ./transformed_data/strains_list.txt
 
 #use the Python script to create sparse matrix of features for the three types of omic data
-python functions/data_transformation.py
+python data_transformation/data_transformation.py
 
 cp ./raw_data/metadata/phenotypes.txt ./transformed_data/targets
 #substitute all tabulations with comma, for later .csv conversion

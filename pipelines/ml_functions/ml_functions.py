@@ -178,3 +178,34 @@ def _get_number_of_samples_by_class(predicted_classes: np.ndarray, real_classes:
             predicted_classes_counts = [0, len(predicted_classes)]
     
     return predicted_classes_counts, real_classes_counts
+
+
+def create_list_of_all_features(features: list):
+    '''
+    Create a list of all the features used to train machine learning models.
+
+    Given a list of feature types (gene expression, gpa and snps), this function creates a list with all the features in the required groups.
+    
+    Parameters
+    ----------
+        features: list of str
+            The types of features that will be included in the returned list. The elements in the list must be either 'genexp', 'gpa' or 'snps'. If an 
+            element in the list is not one of these three, the code raises a ValueError.
+    Returns
+    -------
+        features_list: list of str
+            The list of all the features of the types given as input. The order of the features in the output list depends on the order
+            types were given as input.
+    '''
+    features_list = []
+    for feature in Counter(features).keys():
+        if feature not in ['genexp', 'gpa', 'snps']:
+            raise ValueError("Set of features chosen is not one of the possible choices")
+        
+        #read the features from the list in the raw data
+        with open("raw_data/features_gpa_expr_snps/" + feature + "/" + feature + "_feature_list.txt") as file:
+            new_features = list(file)
+            new_features = [feat.rstrip("\n") for feat in new_features]
+            #eliminate "\n" characters that are at the end of each strain in the list
+        features_list += new_features
+    return features_list

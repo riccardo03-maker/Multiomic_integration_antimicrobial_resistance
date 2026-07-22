@@ -10,7 +10,7 @@ from sklearn.metrics import precision_score, recall_score, accuracy_score
 import numpy as np
 import pandas as pd
 
-from datatransf import weighted_train_test_split
+from ml_functions.ml_functions import weighted_train_test_split
 
 __author__=['Riccardo Grandicelli']
 __email__=['riccardograndicelli03@gmail.com']
@@ -190,7 +190,7 @@ def neural_network_single_feature_type():
     precision_s, precision_r, recall_s, recall_r, accuracy = evaluate(model = model, X_test = X_test, Y_test = Y_test)
 
     result_table.loc[len(result_table)] = ['Cef', 'genexp', accuracy_training, precision_s, precision_r, recall_s, recall_r, accuracy]
-    result_table.to_csv("neural_networks/results/single_features/genexp.csv")
+    result_table.to_csv("pipelines/results/neural_networks/single_features/genexp.csv")
 
 
 if(__name__ == '__main__'):
