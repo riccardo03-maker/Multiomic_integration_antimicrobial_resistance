@@ -1,6 +1,6 @@
 #install R and Python requirements
 Rscript R_scripts/install_requirements.R
-python -m pip install .
+python -m pip install functions/
 
 #decompress raw data
 unzip ./raw_data/features_gpa_expr_snps.zip -d ./raw_data
