@@ -11,3 +11,6 @@ transformed_data/
 
 #Folder with external data
 other_data/
+
+#Neural network trained (too big size)
+pipelines/nn_trained_models/
