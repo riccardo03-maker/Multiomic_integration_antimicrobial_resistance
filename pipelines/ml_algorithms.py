@@ -56,15 +56,15 @@ def svm_paper_cv():
     
     scores_array = np.zeros(shape = (7, 4), dtype = np.float64)
 
-    for j, drug in enumerate(drugs):
-        for i, features in enumerate(all_combinations_of_features):
+    for i, drug in enumerate(drugs):
+        for j, features in enumerate(all_combinations_of_features):
 
             X_train, X_test, Y_train, Y_test = weighted_train_test_split(drug = drug, features = features, test_size = 0.2, random_state  = 42)
             #use a seed for random number generation, so that the splitting between train and test set is always
             #the same for the same drug, and results can be compared more easily
 
             svm_model = LinearSVC(penalty = 'l1', loss = 'squared_hinge', max_iter = 1000000, tol = 0.000001,
-                                      class_weight = "balanced", dual = False, random_state = 1, C = c_params[j][i])
+                                      class_weight = "balanced", dual = False, random_state = 1, C = c_params[i][j])
             cv_scores = np.zeros(5)
 
             for k in range(5):
@@ -73,10 +73,10 @@ def svm_paper_cv():
                 cv_score = cross_val_score(svm_model, X=X_train, y=Y_train, cv=cv, scoring = 'f1_macro', n_jobs = 1)
                 cv_scores[k] = cv_score.mean()
 
-            scores_array[i][j] = cv_scores.mean()
+            scores_array[j][i] = cv_scores.mean()
     
     scores_data = pd.DataFrame(data = scores_array, index = features_strings, columns = drugs)
-    scores_data.to_csv("./ml_algorithms/results/svm/svm_paper_cv.csv")
+    scores_data.to_csv("./pipelines/results/svm/svm_paper_cv.csv")
 
 
 def svm_paper_test(standardize: bool = False):
@@ -115,6 +115,136 @@ def svm_paper_test(standardize: bool = False):
         Y_predict = svm_model.predict(X_test)
         #print("F1 score macro " + drugs[i] + ": " + str(f1_score(Y_test, Y_predict, average = 'macro')))
         print("Accuracy " + drugs[i] + ": " + str(accuracy_score(Y_test, Y_predict)))
+
+
+def pca():
+    '''
+    Implement a PCA for all the three types of features, to see if two principal components are enough to split samples correctly
+    into the two classes.
+    '''
+    for drug in drugs:
+        #create datasets of input features and output targets, but without dividing into train and test sets
+        targets = pd.read_csv("./transformed_data/targets/targets.csv")
+        columns = [c for c in targets.columns if c in ["Index", "Strain", drug]]
+        targets = targets[columns]
+        targets=targets.dropna(subset=drug)
+
+        #get the indexes of the remaining samples (those without NA for the drug considered in this iteration)
+        indexes_to_keep = targets["Index"]
+
+        for feature in ['genexp', 'gpa', 'snps']:
+            features = load_npz("./transformed_data/features/" + feature + "_features.npz")
+            features = features[indexes_to_keep]
+            if feature == 'genexp': #standardize
+                features = scale(features.toarray()) #standardization cannot be done using sparse matrices, so we convert into np.ndarray
+                features = csr_array(features)
+
+            pca = PCA(n_components = 2)
+            pca.fit(features)
+            samples_projected = pca.transform(features)
+
+            targets.insert(len(targets.columns), feature + "_1", samples_projected[:, 0])
+            targets.insert(len(targets.columns), feature + "_2", samples_projected[:, 1])
+
+            print("Iteration")
+        
+        targets.to_csv("pipelines/results/pca/pca_" + drug + ".csv")
+
+
+#dictionary with all machine learning models used
+ml_models = {'svc': SVC, 'log_reg': LogisticRegression, 'knn': KNeighborsClassifier, 'lda': LinearDiscriminantAnalysis}
+
+
+def cross_validate_model(model_name: str, **kwargs):
+    '''
+    Given a certain machine learning model, this function implements a cross-validation pipeline to select, for each drug, 
+    the combination of features with the best classification performance.
+
+    For each drug and each combination of feature types (gene expression, gpa and snps), the full dataset is divided into a train and
+    a test set, using 80% of samples for training and 20% for testing, keeping the same proportions between samples susceptible and 
+    resistent to a certain drug. Then, a 5-fold cross-validation is applied on the training set, and classification performances are
+    evaluated by averaging over the accuracy score obtained at each cross-validation loop. The whole cross-validation procedure is
+    repeated five times for each drug and each combination of features, and the final classification score is given by averaging over the
+    accuracies obtained in each one of the five iterations.
+
+    The hyperparameters of the selected model are not optimized using cross-validation, but they can be given as input instead.
+
+    The classification performances obtained for each drug and each combination of features are saved in a csv file.
+
+    Parameters
+    ----------
+        model_name: str
+            The machine learning model whose performances are evaluated through cross-validation.
+        **kwargs:
+            Optional parameters for the machine learning model selected.
+    '''
+    scores_array = np.zeros(shape = (7, 4), dtype = np.float64)
+    standard_deviation_array = np.zeros(shape = (7, 4), dtype = np.float64)
+    
+    for i, drug in enumerate(drugs):
+        for j, features in enumerate(all_combinations_of_features):
+    
+            X_train, X_test, Y_train, Y_test = weighted_train_test_split(drug = drug, features = features, test_size = 0.2, random_state  = 42)
+            #use a seed for random train-test splitting, so that the samples used for training and testing are always
+            #the same for the same drug, and results can be compared more easily
+
+            if model_name == 'lda':
+                X_train = X_train.toarray()
+                X_test = X_test.toarray()
+            #linear discriminant analysis does not work on sparse data
+    
+            model = ml_models[model_name](**kwargs)
+            cv_scores = np.array([], dtype = np.float64)
+    
+            for k in range(5):
+                #Perform a 5-fold cross validation 5 times, and average over the different results
+                cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=k)
+                single_iteration_scores = cross_val_score(model, X=X_train, y=Y_train, cv=cv, scoring = 'accuracy', n_jobs = 1)
+                cv_scores = np.concatenate((cv_scores, single_iteration_scores)) 
+    
+            scores_array[j][i] = cv_scores.mean()
+            standard_deviation_array[j][i] = cv_scores.std()
+            print("Iteration")
+        
+    scores_data = pd.DataFrame(data = scores_array, index = features_strings, columns = drugs)
+    std_data = pd.DataFrame(data = standard_deviation_array, index = features_strings, columns = drugs)
+    scores_data.to_csv("./pipelines/results/ml_algorithms/" + model_name + "/" + model_name + "_cv_scores.csv")
+    std_data.to_csv("./pipelines/results/ml_algorithms/" + model_name + "/" + model_name + "_cv_std.csv")
+
+
+def svm_paper_all_scores():
+    '''
+    Implement the svm algorithm of the paper, but calculating all the scores
+    '''
+    result_table = pd.DataFrame(columns = ['drug', 'features', 'precision_s', 'precision_r', 'recall_s', 'recall_r', 'accuracy'])
+    count_table = pd.DataFrame(columns = ['drug', 'features', 'test samples', 'predicted_s', 'real_s', 'predicted_r', 'real_r'])
+    c_params = [[0.025, 0.01, 0.04, 0.015, 0.01, 0.04, 0.025], [0.02, 0.02, 0.04, 0.02, 0.015, 0.05, 0.07],
+                [0.025, 0.025, 0.1, 0.04, 0.15, 0.07, 0.02], [0.085, 0.015, 0.04, 0.03, 0.015, 0.07, 0.07]]
+    
+    for i, drug in enumerate(drugs):
+        for j, features in enumerate(all_combinations_of_features):
+            X_train, X_test, Y_train, Y_test = weighted_train_test_split(drug = drug, features = features, 
+                                                        test_size = 0.2, standardize = True, random_state  = 42)
+    
+            svm_model = LinearSVC(penalty = 'l1', loss = 'squared_hinge', max_iter = 1000000, tol = 0.000001,
+                                                class_weight = "balanced", dual = False, random_state = 1, C = 0.1)
+            svm_model.fit(X_train, Y_train)
+            Y_predict = svm_model.predict(X_test)
+    
+            #get the total number of predicted and real susceptible and resistent samples
+            predicted_classes, real_classes = _get_number_of_samples_by_class(Y_predict, Y_test)
+    
+            result_table.loc[len(result_table)] = [drug, features_strings[j], precision_score(Y_test, Y_predict, pos_label = 0), 
+                                                    precision_score(Y_test, Y_predict, pos_label = 1), recall_score(Y_test, Y_predict, pos_label = 0),
+                                                    recall_score(Y_test, Y_predict, pos_label = 1), accuracy_score(Y_test, Y_predict)]
+            count_table.loc[len(count_table)] = [drug, features_strings[j], X_test.shape[0], predicted_classes[0],
+                                                real_classes[0], predicted_classes[1], real_classes[1]]
+            #0 is susceptible and 1 is resistent
+    
+            print("Iteration")
+        
+    result_table.to_csv("pipelines/results/svm/svm_paper_scores.csv")
+    count_table.to_csv("pipelines/results/svm/svc_paper_counts.csv")
 
 
 def logistic_regression():
@@ -167,9 +297,9 @@ def logistic_regression():
             print("Iteration")
         coefficients.loc[len(coefficients)] = coefficients_array[0] #use [0] because coefficients are stored as a column vectors
 
-    result_table.to_csv("ml_algorithms/results/logistic_regression/log_reg_scores.csv")
-    count_table.to_csv("ml_algorithms/results/logistic_regression/log_reg_counts.csv")
-    coefficients.to_csv("ml_algorithms/results/logistic_regression/log_reg_coefficients.csv")
+    result_table.to_csv("pipelines/results/logistic_regression/log_reg_scores.csv")
+    count_table.to_csv("pipelines/results/logistic_regression/log_reg_counts.csv")
+    coefficients.to_csv("pipelines/results/logistic_regression/log_reg_coefficients.csv")
 
 
 def logistic_regression_with_feature_selection():
@@ -226,8 +356,8 @@ def logistic_regression_with_feature_selection():
             
             print("Iteration")
 
-    result_table.to_csv("ml_algorithms/results/logistic_regression/log_reg_relevant_features_scores.csv")
-    count_table.to_csv("ml_algorithms/results/logistic_regression/log_reg_relevant_features_counts.csv")
+    result_table.to_csv("pipelines/results/logistic_regression/log_reg_relevant_features_scores.csv")
+    count_table.to_csv("pipelines/results/logistic_regression/log_reg_relevant_features_counts.csv")
 
 
 def linear_discriminant_analysis():
@@ -264,8 +394,8 @@ def linear_discriminant_analysis():
 
             print("Iteration")
     
-    result_table.to_csv("ml_algorithms/results/lda/lda_scores.csv")
-    count_table.to_csv("ml_algorithms/results/lda/lda_counts.csv")
+    result_table.to_csv("pipelines/results/lda/lda_scores.csv")
+    count_table.to_csv("pipelines/results/lda/lda_counts.csv")
 
 
 def quadratic_discriminant_analysis():
@@ -309,8 +439,8 @@ def quadratic_discriminant_analysis():
 
             print("Iteration")
     
-    result_table.to_csv("ml_algorithms/results/lda/qda_scores.csv")
-    count_table.to_csv("ml_algorithms/results/lda/qda_counts.csv")
+    result_table.to_csv("pipelines/results/lda/qda_scores.csv")
+    count_table.to_csv("pipelines/results/lda/qda_counts.csv")
 
 
 def knn_performance():
@@ -341,7 +471,7 @@ def knn_performance():
 
             print("Iteration")
     
-    best_values_of_k.to_csv("ml_algorithms/results/knn/best_values_of_k.csv")
+    best_values_of_k.to_csv("pipelines/results/knn/best_values_of_k.csv")
 
 
 def knn():
@@ -355,7 +485,7 @@ def knn():
     result_table = pd.DataFrame(columns = ['drug', 'features', 'precision_s', 'precision_r', 'recall_s', 'recall_r', 'accuracy'])
     count_table = pd.DataFrame(columns = ['drug', 'features', 'test samples', 'predicted_s', 'real_s', 'predicted_r', 'real_r'])
 
-    best_k_values = pd.read_csv("ml_algorithms/results/knn/best_values_of_k.csv")['best_k'].to_list()
+    best_k_values = pd.read_csv("pipelines/results/knn/best_values_of_k.csv")['best_k'].to_list()
     iteration_number = 0
 
     for drug in drugs:
@@ -380,8 +510,8 @@ def knn():
             print("Iteration")
             iteration_number += 1
     
-    result_table.to_csv("ml_algorithms/results/knn/knn_scores.csv")
-    count_table.to_csv("ml_algorithms/results/knn/knn_counts.csv")
+    result_table.to_csv("pipelines/results/knn/knn_scores.csv")
+    count_table.to_csv("pipelines/results/knn/knn_counts.csv")
 
 
 def svc(kernel: str, C: float, gamma: float = 'scale', degree: int = 3):
@@ -429,42 +559,8 @@ def svc(kernel: str, C: float, gamma: float = 'scale', degree: int = 3):
 
             print("Iteration")
     
-    result_table.to_csv("ml_algorithms/results/svc/svc_scores_" + kernel + ".csv")
-    count_table.to_csv("ml_algorithms/results/svc/svc_counts_" + kernel + ".csv")
-
-
-def pca():
-    '''
-    Implement a PCA for all the three types of features, to see if two principal components are enough to split samples correctly
-    into the two classes.
-    '''
-    for drug in drugs:
-        #create datasets of input features and output targets, but without dividing into train and test sets
-        targets = pd.read_csv("./transformed_data/targets/targets.csv")
-        columns = [c for c in targets.columns if c in ["Index", "Strain", drug]]
-        targets = targets[columns]
-        targets=targets.dropna(subset=drug)
-
-        #get the indexes of the remaining samples (those without NA for the drug considered in this iteration)
-        indexes_to_keep = targets["Index"]
-
-        for feature in ['genexp', 'gpa', 'snps']:
-            features = load_npz("./transformed_data/features/" + feature + "_features.npz")
-            features = features[indexes_to_keep]
-            if feature == 'genexp': #standardize
-                features = scale(features.toarray()) #standardization cannot be done using sparse matrices, so we convert into np.ndarray
-                features = csr_array(features)
-
-            pca = PCA(n_components = 2)
-            pca.fit(features)
-            samples_projected = pca.transform(features)
-
-            targets.insert(len(targets.columns), feature + "_1", samples_projected[:, 0])
-            targets.insert(len(targets.columns), feature + "_2", samples_projected[:, 1])
-
-            print("Iteration")
-        
-        targets.to_csv("ml_algorithms/results/pca/pca_" + drug + ".csv")
+    result_table.to_csv("pipelines/results/svc/svc_scores_" + kernel + ".csv")
+    count_table.to_csv("pipelines/results/svc/svc_counts_" + kernel + ".csv")
 
 
 def isomap():
@@ -498,10 +594,11 @@ def isomap():
 
             print("Iteration")
         
-        targets.to_csv("ml_algorithms/results/dim_reduction/isomap/isomap_" + drug + ".csv")
+        targets.to_csv("pipelines/results/dim_reduction/isomap/isomap_" + drug + ".csv")
 
 
 if(__name__ == '__main__'):
-    svc(kernel = 'poly', C = 0.1, degree = 3, gamma = 1)
+    cross_validate_model(model_name = 'lda', solver = 'svd')
+    #cross_validate_model(model_name = 'knn', n_neighbors = 5)
 
 
