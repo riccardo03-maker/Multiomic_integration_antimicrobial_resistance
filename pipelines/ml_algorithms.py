@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 from sklearn.model_selection import cross_val_score, StratifiedKFold
-from sklearn.metrics import f1_score, precision_score, recall_score, accuracy_score
+from sklearn.metrics import precision_score, recall_score, accuracy_score
 from sklearn.svm import LinearSVC, SVC
 from sklearn.linear_model import LogisticRegression, LogisticRegressionCV
 from sklearn.decomposition import PCA
@@ -16,7 +16,6 @@ import numpy as np
 import pandas as pd
 import math
 from scipy.sparse import load_npz, csr_array
-from collections import Counter
 
 __author__=['Riccardo Grandicelli']
 __email__=['riccardograndicelli03@gmail.com']
@@ -199,12 +198,16 @@ def cross_validate_model(model_name: str, **kwargs):
             for k in range(5):
                 #Perform a 5-fold cross validation 5 times, and average over the different results
                 cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=k)
-                single_iteration_scores = cross_val_score(model, X=X_train, y=Y_train, cv=cv, scoring = 'accuracy', n_jobs = 1)
+                single_iteration_scores = cross_val_score(model, X=X_train, y=Y_train, cv=cv, scoring = 'f1_macro', n_jobs = 1)
                 cv_scores = np.concatenate((cv_scores, single_iteration_scores)) 
     
             scores_array[j][i] = cv_scores.mean()
             standard_deviation_array[j][i] = cv_scores.std()
             print("Iteration")
+
+    if model_name == 'svc':
+        model_name = model_name + '_' + kwargs['kernel']
+        #include also the kernel in the final output file name for support vector classification
         
     scores_data = pd.DataFrame(data = scores_array, index = features_strings, columns = drugs)
     std_data = pd.DataFrame(data = standard_deviation_array, index = features_strings, columns = drugs)
@@ -598,7 +601,9 @@ def isomap():
 
 
 if(__name__ == '__main__'):
-    cross_validate_model(model_name = 'lda', solver = 'svd')
+    #cross_validate_model(model_name = 'log_reg', C = 0.1, l1_ratio = 1.0, tol = 1e-6, solver = 'liblinear')
+    #l1 ratio = 1 is the Lasso regularization
+    #cross_validate_model(model_name = 'lda', solver = 'svd')
     #cross_validate_model(model_name = 'knn', n_neighbors = 5)
-
-
+    #cross_validate_model(model_name = 'svc', C = 0.1, kernel = 'linear', tol = 1e-6)
+    cross_validate_model(model_name = 'svc', C = 0.1, kernel = 'poly', tol = 1e-6, gamma = 1., degree = 3)
