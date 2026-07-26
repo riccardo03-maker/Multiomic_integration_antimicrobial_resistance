@@ -4,6 +4,7 @@
 import torch
 from torch import nn
 from torch.utils.data import DataLoader, TensorDataset
+from torch import softmax
 
 from sklearn.metrics import precision_score, recall_score, accuracy_score
 import numpy as np
@@ -50,8 +51,8 @@ def evaluate(model: nn.Module, X_test: torch.tensor, Y_test: torch.tensor, full_
         Y_test: torch.tensor
             The true output classes for each sample in the X_test set.
         full_tensor: bool (default: False)
-            If True, returns the tensor with the predicted classes for each sample. Otherwise, the function returns the classification
-            scores.
+            If True, returns the tensor with the probabilities of each class for each sample. Otherwise, 
+            the function returns the classification scores.
     Returns
     -------
         Y_predict: np.ndarray
@@ -72,7 +73,7 @@ def evaluate(model: nn.Module, X_test: torch.tensor, Y_test: torch.tensor, full_
     Y_predict = pred.argmax(1)
     Y_predict = np.array(Y_predict.numpy(), dtype = np.int32)
     if full_tensor:
-        return Y_predict
+        return softmax(pred, dim = 1).detach().numpy()
 
     Y_test = np.array(Y_test.numpy(), dtype = np.int32)
 
@@ -314,7 +315,7 @@ def late_fusion_nn_test():
     result_table = pd.DataFrame(columns = ['drug', 'features', 'precision_s', 'precision_r', 'recall_s', 'recall_r', 'accuracy'])
 
     for drug in ['Cef', 'Cip', 'Mer', 'Tob']:
-        predicted_classes = [] #list with the arrays of predicted classes for each combination of features
+        predictions = [] #list with the arrays of predicted classes for each combination of features
         for features in [['genexp'], ['gpa'], ['snps']]:
             X_train, X_test, Y_train, Y_test = weighted_train_test_split(drug = drug, features = features, test_size = 0.2, standardize = True, random_state = 42)
             #using always the same random state for the train-test splitting ensures that the samples used for training and testing are
@@ -332,19 +333,18 @@ def late_fusion_nn_test():
             model.load_state_dict(torch.load("pipelines/nn_trained_models/late_fusion/late_fusion_" + features[0] + "_" + drug, weights_only=True))
             model.eval()
 
-            Y_predict = evaluate(model = model, X_test = X_test, Y_test = Y_test, full_tensor = True)
-            predicted_classes.append(Y_predict)
+            new_prediction = evaluate(model = model, X_test = X_test, Y_test = Y_test, full_tensor = True)
+            predictions.append(new_prediction)
 
-        #combine the predictions by just summing them: if the sum is 2 or 3, the sample will be assigned to class 1, while if
-        #the sum is 1 or 0, the sample will be assigned to class 0
-        predicted_classes = np.array(predicted_classes, dtype = np.int32)
-        combine_predictions = np.sum(predicted_classes, axis = 0)
-        combine_predictions = np.array(combine_predictions >= 2, dtype = np.int32)
+        sum_of_predictions = sum(predictions)
+        #sum the probabilities of the classes for each of the three networks, then classify the sample in the class with the total
+        #highest probability
+        predicted_classes = np.argmax(sum_of_predictions, axis = 1)
 
         #Y_test is always the same for the same drug, it is not needed to create it again using weighted_train_test_split with all features
-        result_table.loc[len(result_table)] = [drug, "genexp+gpa+snps", precision_score(Y_test, combine_predictions, pos_label = 0), 
-                                               precision_score(Y_test, combine_predictions, pos_label = 1), recall_score(Y_test, combine_predictions, pos_label = 0),
-                                               recall_score(Y_test, combine_predictions, pos_label=1), accuracy_score(Y_test, combine_predictions)]
+        result_table.loc[len(result_table)] = [drug, "genexp+gpa+snps", precision_score(Y_test, predicted_classes, pos_label = 0), 
+                                               precision_score(Y_test, predicted_classes, pos_label = 1), recall_score(Y_test, predicted_classes, pos_label = 0),
+                                               recall_score(Y_test, predicted_classes, pos_label=1), accuracy_score(Y_test, predicted_classes)]
         print("Iteration")
 
     result_table.to_csv("pipelines/results/neural_networks/late_fusion_scores.csv")
@@ -354,5 +354,4 @@ if(__name__ == '__main__'):
     #for drug in ['Cef', 'Cip', 'Mer', 'Tob']:
         #for features in [['genexp'], ['gpa'], ['snps']]:
             #train_nn(features = features, drug = drug, architecture = 'late_fusion')
-    nn_test(architecture='early_fusion')
-    nn_test(architecture='intermediate_fusion')
+    late_fusion_nn_test()
