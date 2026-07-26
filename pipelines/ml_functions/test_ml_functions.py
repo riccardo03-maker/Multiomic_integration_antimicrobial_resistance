@@ -1,4 +1,4 @@
-from ml_functions import weighted_train_test_split, _get_non_zero_features, _get_number_of_samples_by_class, create_list_of_all_features
+from ml_functions import weighted_train_test_split, get_non_zero_features, _get_number_of_samples_by_class, create_list_of_all_features
 import pytest
 from scipy.sparse import csr_array
 import pandas as pd
@@ -141,12 +141,15 @@ def test_list_of_non_zero_features():
     Test the correct creation of the list of features with a coefficient different from 0 in the logistic regression
 
     GIVEN: the data with all the coefficients for all features in logistic regression, for all drugs
-    WHEN: I create the list of all the features with coefficients different from 0 for the Ceftazidim drug
-    THEN: I obtain a list of 261 elements (counted using R)
+    WHEN: I create the list of all the features with coefficients different from 0 for the Ceftazidim drug, for all the three types of
+    features
+    THEN: the total number of features of the three types is 78 (counted using R)
     '''
-    relevant_features, relevant_features_types = _get_non_zero_features(drug = 'Cef')
-    assert(len(relevant_features) == 261)
-    assert(len(relevant_features_types) == 261)
+    data = pd.read_csv("pipelines/results/log_reg_coefficients.csv")
+    relevant_features_genexp = get_non_zero_features(data = data, drug = 'Cef', feature = 'genexp')
+    relevant_features_gpa = get_non_zero_features(data = data, drug = 'Cef', feature = 'gpa')
+    relevant_features_snps = get_non_zero_features(data = data, drug = 'Cef', feature = 'snps')
+    assert(len(relevant_features_genexp) + len(relevant_features_gpa) + len(relevant_features_snps) == 78)
 
 
 # Testing count of assignments to susceptible and resistent classes

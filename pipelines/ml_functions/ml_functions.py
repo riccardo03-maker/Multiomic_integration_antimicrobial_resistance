@@ -118,31 +118,34 @@ def weighted_train_test_split(drug: str, features: list, test_size: float, stand
     return X_train, X_test, Y_train, Y_test
 
 
-def _get_non_zero_features(drug: str):
+def get_non_zero_features(data: pd.DataFrame, drug: str, feature: str):
     '''
-    This function is used to obtain all the features with a coefficient different from zero in the logistic regression implemented through
-    the 'logistic_regression' function in the ml_algorithms.py file.
+    This function is used to obtain all the features of a certain type with a coefficient different from zero in the logistic 
+    regression with Lasso regularization.
 
     Parameters
     ----------
+        data: pd.DataFrame
+            The dataset with the coefficients of all the features obtained in the logistic regression with Lasso regularization.
+            The dataset is given as input instead of being load into the function because it is a large dataset, and opening it
+            requires time, so this allows to open it only once when this function is called several times in a single execution.
         drug: str
-            The selected drug among the four possible choices ('Cef', 'Cip', 'Mer', 'Tob')
+            The selected drug among the four possible choices ('Cef', 'Cip', 'Mer', 'Tob').
+        feature: str
+            The type of feature required (can be either 'genexp', 'gpa' or 'snps').
     Returns
     -------
         relevant_features: list of str
-            The list of features with coefficients different from 0 in the logistic regression
-        relevant_features_types: list of str
-            The type of the relevant features selected (can be either genexp, gpa or snps)
+            The list of features of the required type with coefficients different from 0 in the logistic regression.
     '''
-    data = pd.read_csv("ml_algorithms/results/logistic_regression/log_reg_coefficients.csv")
     transposed = data.T.iloc[1:] #now drugs are columns and features are rows
     transposed.columns = ['Feature_type', 'Cef', 'Cip', 'Mer', 'Tob']
-    data = transposed[['Feature_type', drug]].query(drug + ' != "0.0"') #select only the rows where the coefficient for the selected drug is not 0
+    data = transposed[['Feature_type', drug]].query(drug + ' != "0.0" and Feature_type == "' + feature + '"')
+    #select only the rows where the coefficient for the selected drug is not 0
     
     relevant_features = data.T.columns
-    relevant_features_types = list(data.T.iloc[0])
 
-    return relevant_features, relevant_features_types
+    return relevant_features
 
 
 def _get_number_of_samples_by_class(predicted_classes: np.ndarray, real_classes: np.ndarray):
@@ -184,7 +187,7 @@ def create_list_of_all_features(features: list):
     '''
     Create a list of all the features used to train machine learning models.
 
-    Given a list of feature types (gene expression, gpa and snps), this function creates a list with all the features in the required groups.
+    Given a list of feature types (gene expression, gpa and snps), this function creates a list with all the features of the required types.
     
     Parameters
     ----------

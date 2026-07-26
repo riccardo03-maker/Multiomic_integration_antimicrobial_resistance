@@ -2,7 +2,6 @@
 # -*- coding: utf-8 -*-
 
 import torch
-from torch import softmax
 from torch import nn
 from torch.utils.data import DataLoader, TensorDataset
 
@@ -301,7 +300,7 @@ def nn_test(architecture: str):
             result_table.loc[len(result_table)] = [drug, features_strings[j], accuracy_training, precision_s, precision_r, recall_s, recall_r, accuracy]
             print("Iteration")
 
-    result_table.to_csv("pipelines/results/neural_networks/" + architecture + "/" + architecture + "_scores.csv")
+    result_table.to_csv("pipelines/results/neural_networks/" + architecture + "_scores.csv")
 
 
 def late_fusion_nn_test():
@@ -348,11 +347,12 @@ def late_fusion_nn_test():
                                                recall_score(Y_test, combine_predictions, pos_label=1), accuracy_score(Y_test, combine_predictions)]
         print("Iteration")
 
-    result_table.to_csv("pipelines/results/neural_networks/late_fusion/late_fusion_scores.csv")
+    result_table.to_csv("pipelines/results/neural_networks/late_fusion_scores.csv")
 
 
 if(__name__ == '__main__'):
     #for drug in ['Cef', 'Cip', 'Mer', 'Tob']:
         #for features in [['genexp'], ['gpa'], ['snps']]:
             #train_nn(features = features, drug = drug, architecture = 'late_fusion')
-    late_fusion_nn_test()
+    nn_test(architecture='early_fusion')
+    nn_test(architecture='intermediate_fusion')

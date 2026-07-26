@@ -10,7 +10,7 @@ from sklearn.preprocessing import scale
 from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
 from sklearn.neighbors import KNeighborsClassifier
 
-from ml_functions.ml_functions import weighted_train_test_split
+from ml_functions.ml_functions import weighted_train_test_split, create_list_of_all_features
 import numpy as np
 import pandas as pd
 from scipy.sparse import load_npz, csr_array
@@ -240,20 +240,56 @@ def model_performance_test(model_name: str, **kwargs):
                         + "_test_scores.csv")
 
 
+def get_logistic_regression_coefficients():
+    '''
+    Return all the features that have a coefficient different from 0 in the logistic regression with Lasso regularization.
+
+    For each drug and for each type of feature (genexp, gpa and snps), the full dataset of input features is split into a training 
+    and a test set. Then, the model is trained on the whole train set, and all the coefficients of the features are saved in a csv
+    file.
+
+    Each row of the dataset stored in the csv file corresponds to a drug, and each column to a feature. The entries represent the coefficient
+    of a feature in the logistic regression fitted using that type of feature as input.
+    '''
+    coefficients = pd.DataFrame(columns = create_list_of_all_features(['genexp', 'gpa', 'snps']))
+    #give a name to the features in the final dataset with the coefficients
+
+    what_type_of_features = ['genexp'] * 6026 + ['gpa'] * 16005 + ['snps'] * 72236
+    coefficients.loc[0] = what_type_of_features
+    #create a row that tells what type is the feature that gives the name to the column
+
+    for drug in drugs:
+        coefficients_array = np.array([[]])
+        for feature in ['genexp', 'gpa', 'snps']: 
+            X_train, X_test, Y_train, Y_test = weighted_train_test_split(drug = drug, features = [feature], test_size = 0.2, standardize = True,
+                                                                               random_state  = 42)
+            log_reg = LogisticRegression(C = 0.1, l1_ratio = 1.0, tol = 1e-6, solver = 'liblinear', class_weight = 'balanced')
+            #l1_ratio 1 is the l1 regularization
+
+            log_reg.fit(X_train, Y_train)
+
+            coefficients_array = np.concatenate((coefficients_array, log_reg.coef_), axis = 1)
+            print("Iteration")
+        coefficients.loc[len(coefficients)] = coefficients_array[0] #use [0] because coefficients are stored as a column vectors
+
+    coefficients.to_csv("pipelines/results/log_reg_coefficients.csv")
+
+
 if(__name__ == '__main__'):
     #cross_validate_model(model_name = 'log_reg', C = 0.1, l1_ratio = 1.0, tol = 1e-6, solver = 'liblinear')
     #l1 ratio = 1 is the Lasso regularization
     #cross_validate_model(model_name = 'lda', solver = 'svd')
-    #cross_validate_model(model_name = 'knn', n_neighbors = 5)
-    #cross_validate_model(model_name = 'svc', C = 0.1, kernel = 'linear', tol = 1e-6)
-    #cross_validate_model(model_name = 'svc', C = 0.1, kernel = 'poly', tol = 1e-6, gamma = 1., degree = 3)
+    #cross_validate_model(model_name = 'knn', n_neighbors = 5, weights = 'distance')
+    #cross_validate_model(model_name = 'svc', C = 0.1, kernel = 'linear', tol = 1e-6, class_weight = 'balanced')
+    #cross_validate_model(model_name = 'svc', C = 0.1, kernel = 'poly', tol = 1e-6, gamma = 1., degree = 3, class_weight = 'balanced')
     #cross_validate_model(model_name = 'svm_paper', penalty = 'l1', loss = 'squared_hinge', max_iter = 1000000, tol = 0.000001,
     #                   class_weight = "balanced", dual = False, C = 0.1)
     #model_performance_test(model_name = 'log_reg', C = 0.1, l1_ratio = 1.0, tol = 1e-6, solver = 'liblinear', class_weight = 'balanced')
     #model_performance_test(model_name = 'lda', solver = 'svd')
     #model_performance_test(model_name = 'lda', solver = 'svd')
     #model_performance_test(model_name = 'knn', n_neighbors = 5)
-    #model_performance_test(model_name = 'svc', C = 0.1, kernel = 'linear', tol = 1e-6)
-    #model_performance_test(model_name = 'svc', C = 0.1, kernel = 'poly', tol = 1e-6, gamma = 1., degree = 3)
-    model_performance_test(model_name = 'svm_paper', penalty = 'l1', loss = 'squared_hinge', max_iter = 1000000, tol = 0.000001,
-                            class_weight = "balanced", dual = False, C = 0.1)
+    #model_performance_test(model_name = 'svc', C = 0.1, kernel = 'linear', tol = 1e-6, class_weight = 'balanced')
+    #model_performance_test(model_name = 'svc', C = 0.1, kernel = 'poly', tol = 1e-6, gamma = 1., degree = 3, class_weight = 'balanced')
+    #model_performance_test(model_name = 'svm_paper', penalty = 'l1', loss = 'squared_hinge', max_iter = 1000000, tol = 0.000001,
+                            #class_weight = "balanced", dual = False, C = 0.1)
+    get_logistic_regression_coefficients()
