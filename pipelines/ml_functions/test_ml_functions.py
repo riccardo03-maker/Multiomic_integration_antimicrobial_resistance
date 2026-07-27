@@ -44,8 +44,8 @@ def test_correct_train_test_split():
     GIVEN: input features about gene expression and gpa, and output classes relative to tobramycin susceptibility or resistance.
     WHEN: I split these data into train and test sets.
     THEN: both train and test input features sets have 22031 columns, and the sum of the number of rows of train and test sets is 406
-    (there are 8 NaN for tobramycin). At the same time, train and test output targets sets have one column each, and a total of 406 rows.
-    Input features sets must be scipy.sparse.csr_array objects, while output targets sets must be numpy.ndarray objects.
+    (there are 8 NaN for tobramycin). At the same time, train and test output classes sets have one column each, and a total of 406 rows.
+    Input features sets must be scipy.sparse.csr_array objects, while output classes sets must be numpy.ndarray objects.
     '''
     X_train, X_test, Y_train, Y_test = weighted_train_test_split(drug = 'Tob', features = ['genexp', 'gpa'], test_size = 0.2)
 
@@ -75,8 +75,8 @@ def test_correct_train_test_split_full_y():
     GIVEN: input features about gene expression and gpa, and output classes relative to tobramycin susceptibility or resistance.
     WHEN: I split these data into train and test sets, with the parameter 'full_Y' = True.
     THEN: both train and test input features sets have 22031 columns, and the sum of the number of rows of train and test sets is 406
-    (there are 8 NaN for tobramycin). At the same time, train and test output targets sets have three columns each, and a total of 406 rows.
-    Input features sets must be scipy.sparse.csr_array objects, while output targets sets must be pandas.DataFrame objects
+    (there are 8 NaN for tobramycin). At the same time, train and test output classes sets have three columns each, and a total of 406 rows.
+    Input features sets must be scipy.sparse.csr_array objects, while output classes sets must be pandas.DataFrame objects
     '''
     X_train, X_test, Y_train, Y_test = weighted_train_test_split(drug = 'Tob', features = ['genexp', 'gpa'], test_size = 0.2, full_Y = True)
 
@@ -152,15 +152,15 @@ def test_list_of_non_zero_features():
     assert(len(relevant_features_genexp) + len(relevant_features_gpa) + len(relevant_features_snps) == 78)
 
 
-# Testing count of assignments to susceptible and resistent classes
+# Testing count of assignments to susceptible and resistant classes
 
 
 def test_count_class_assignment():
     '''
     Test the correct count of the number of samples assigned to each class after a classification performance.
 
-    GIVEN: a test set with 20 samples, 13 belonging to class 0 (susceptible) and 7 belonging to class 1 (resistent), and a set
-    of predicted classes with 9 samples classified as susceptible and 11 classified as resistent.
+    GIVEN: a test set with 20 samples, 13 belonging to class 0 (susceptible) and 7 belonging to class 1 (resistant), and a set
+    of predicted classes with 9 samples classified as susceptible and 11 classified as resistant.
     WHEN: I count the number of samples in each class for both test set and predicted set.
     THEN: the count returns the correct values.
     '''
@@ -179,8 +179,8 @@ def test_all_samples_in_one_class():
     '''
     Test the correct behaviour of the _get_number_of_samples_by_class function when predicted classes of all the samples is the same.
 
-    GIVEN: a test set with 20 samples, 13 belonging to class 0 (susceptible) and 7 belonging to class 1 (resistent), and a set
-    of predicted classes with all samples classified as resistent.
+    GIVEN: a test set with 20 samples, 13 belonging to class 0 (susceptible) and 7 belonging to class 1 (resistant), and a set
+    of predicted classes with all samples classified as resistant.
     WHEN: I count the number of samples in each class for both test set and predicted set.
     THEN: the count returns the correct values.
     '''

@@ -26,7 +26,7 @@ class early_fusion_relevant_features_nn(nn.Module):
     from 0 in the logistic regression with Lasso regularization.
     
     It is a fully connected neural network with three hidden layers, all of them with the same number of nodes (equal to the number 
-    of input features). The output layer has two nodes (corresponding to the two classes, susceptible and resistent).
+    of input features). The output layer has two nodes (corresponding to the two classes, susceptible and resistant).
     
     Parameters
     ----------
@@ -60,7 +60,7 @@ class intermediate_fusion_relevant_features_nn(nn.Module):
     It takes as input all the features of the three types (gene expression, gpa and snps). The first and second hidden layers are composed by three
     separated fully connected branches, one for each feature type and each one with a number of nodes equal to the number of features
     of that type. Then the three branches are merged in the third hidden layer, which has a number of nodes equal to the sum of the
-    features of the three types 99. The output layer has two nodes (corresponding to the two classes, susceptible and resistent).
+    features of the three types 99. The output layer has two nodes (corresponding to the two classes, susceptible and resistant).
     
     Parameters
     ----------
@@ -169,7 +169,7 @@ def train_relevant_features_nn(features: list, drug: str, architecture: str):
     #load dataset and define hyperparameters for model optimization
     dataloader = DataLoader(train_data, batch_size = 64)
     optimizer = torch.optim.Adam(model.parameters(), lr = 1e-3)
-    epochs = 100
+    epochs = 150
                 
     #train the model
     for i in range(epochs):
@@ -192,7 +192,7 @@ def nn_relevant_features_test(architecture: str):
     
     The performance of the chosen architecture of neural network is tested for each drug and each combination of features, using the
     20% of samples that were kept in the test set and were not used for the training of the model. The performance is evaluated through
-    five scores: precision of susceptible and resistent classes, recall of susceptible and resistent classes, and accuracy of classification.
+    five scores: precision of susceptible and resistant classes, recall of susceptible and resistant classes, and accuracy of classification.
     
     Parameters
     ----------
@@ -326,7 +326,11 @@ def late_fusion_relevant_features_test():
 
 if(__name__ == '__main__'):
     #for drug in ['Cef', 'Cip', 'Mer', 'Tob']:
-     #   for features in [['genexp'], ['gpa'], ['snps']]:
-      #      train_relevant_features_nn(features = features, drug = drug, architecture = 'late_fusion')
-    #nn_relevant_features_test(architecture = 'late_fusion')
+       # train_relevant_features_nn(features=['genexp', 'gpa', 'snps'], drug = drug, architecture = 'intermediate_fusion')
+        #for features in [['genexp'], ['gpa'], ['snps']]:
+         #   train_relevant_features_nn(features = features, drug = drug, architecture = 'late_fusion')
+        #for features in all_combinations_of_features:
+         #   train_relevant_features_nn(features = features, drug = drug, architecture = 'early_fusion')
+    nn_relevant_features_test(architecture = 'early_fusion')
+    nn_relevant_features_test(architecture = 'intermediate_fusion')
     late_fusion_relevant_features_test()

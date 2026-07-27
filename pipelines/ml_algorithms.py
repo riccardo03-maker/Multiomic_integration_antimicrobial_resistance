@@ -32,7 +32,7 @@ def svm_paper_cv():
 
     This algorithm uses the linear Support Vector Classification (SVC), with an L1 regularization and a squared loss. The full dataset with
     the selected features (the procedure is repeated for each drug and for each combination of features) is divided into a train and a
-    test set with respectively 80% and 20% of data, keeping the same proportion between isolates susceptible and resistent to the
+    test set with respectively 80% and 20% of data, keeping the same proportion between isolates susceptible and resistant to the
     selected drug.
 
     Then the performance of the linear SVC is evaluated on the train dataset through a 10-fold cross validation. The score used to evaluate
@@ -87,14 +87,14 @@ def pca():
     into the two classes.
     '''
     for drug in drugs:
-        #create datasets of input features and output targets, but without dividing into train and test sets
-        targets = pd.read_csv("./transformed_data/targets/targets.csv")
-        columns = [c for c in targets.columns if c in ["Index", "Strain", drug]]
-        targets = targets[columns]
-        targets=targets.dropna(subset=drug)
+        #create datasets of input features and output classes, but without dividing into train and test sets
+        classes = pd.read_csv("./transformed_data/classes/classes.csv")
+        columns = [c for c in classes.columns if c in ["Index", "Strain", drug]]
+        classes = classes[columns]
+        classes=classes.dropna(subset=drug)
 
         #get the indexes of the remaining samples (those without NA for the drug considered in this iteration)
-        indexes_to_keep = targets["Index"]
+        indexes_to_keep = classes["Index"]
 
         for feature in ['genexp', 'gpa', 'snps']:
             features = load_npz("./transformed_data/features/" + feature + "_features.npz")
@@ -107,12 +107,12 @@ def pca():
             pca.fit(features)
             samples_projected = pca.transform(features)
 
-            targets.insert(len(targets.columns), feature + "_1", samples_projected[:, 0])
-            targets.insert(len(targets.columns), feature + "_2", samples_projected[:, 1])
+            classes.insert(len(classes.columns), feature + "_1", samples_projected[:, 0])
+            classes.insert(len(classes.columns), feature + "_2", samples_projected[:, 1])
 
             print("Iteration")
         
-        targets.to_csv("pipelines/results/pca/pca_" + drug + ".csv")
+        classes.to_csv("pipelines/results/pca/pca_" + drug + ".csv")
 
 
 #dictionary with all machine learning models used
@@ -127,7 +127,7 @@ def cross_validate_model(model_name: str, **kwargs):
 
     For each drug and each combination of feature types (gene expression, gpa and snps), the full dataset is divided into a train and
     a test set, using 80% of samples for training and 20% for testing, keeping the same proportions between samples susceptible and 
-    resistent to a certain drug. Then, a 5-fold cross-validation is applied on the training set, and classification performances are
+    resistant to a certain drug. Then, a 5-fold cross-validation is applied on the training set, and classification performances are
     evaluated by averaging over the accuracy score obtained at each cross-validation loop. The whole cross-validation procedure is
     repeated five times for each drug and each combination of features, and the final classification score is given by averaging over the
     accuracies obtained in each one of the five iterations.
@@ -190,7 +190,7 @@ def model_performance_test(model_name: str, **kwargs):
     completely independent from the samples used for cross-validation.
 
     The selected machine learning model is then trained on the training set, and its classification performances evaluated on the test
-    set. Performances are evaluated through five scores: precision (for both susceptible and resistent classes), recall (again for both
+    set. Performances are evaluated through five scores: precision (for both susceptible and resistant classes), recall (again for both
     classes), and accuracy of classification.
 
     All the scores are saved in a csv file.

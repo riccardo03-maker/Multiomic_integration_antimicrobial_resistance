@@ -39,8 +39,8 @@ def train_loop(dataloader, model, loss_fn, optimizer):
 
 def evaluate(model: nn.Module, X_test: torch.tensor, Y_test: torch.tensor, full_tensor: bool = False):
     '''
-    Evaluate model classification performances for a neural network, giving as output five scores: precision for susceptible and resistent,
-    recall for susceptible (0) and resistent (1), and accuracy.
+    Evaluate model classification performances for a neural network, giving as output five scores: precision for susceptible and resistant,
+    recall for susceptible (0) and resistant (1), and accuracy.
 
     Parameters
     ----------
@@ -60,11 +60,11 @@ def evaluate(model: nn.Module, X_test: torch.tensor, Y_test: torch.tensor, full_
         precision_s: float
             The precision score for the susceptible class.
         precision_r: float
-            The precision score for the resistent class.
+            The precision score for the resistant class.
         recall_s: float
             The recall score for the susceptible class.
         recall_r: float
-            The recall score for the resistent class.
+            The recall score for the resistant class.
         accuracy: float
             The accuracy of classification.
     '''
@@ -91,7 +91,7 @@ class early_fusion_nn(nn.Module):
     or a combination of them. In this latter case different types of input features are combined immediately in the first layer.
 
     It is a fully connected neural network with two hidden layers: the first layer has 300 nodes while the second hidden layer 
-    has 99 nodes. The output layer has two nodes (corresponding to the two classes, susceptible and resistent).
+    has 99 nodes. The output layer has two nodes (corresponding to the two classes, susceptible and resistant).
 
     The number of nodes in the first hidden layer is much smaller than the number of input features to have dimensionality reduction
     (otherwise the network would bee too big to be stored in memory).
@@ -122,7 +122,7 @@ class intermediate_fusion_nn(nn.Module):
 
     It takes as input all the features of the three types (gene expression, gpa and snps). The first hidden layer is composed by three
     separated fully connected branches of 100 nodes, one for each type of feature. Then the three branches are merged in the second hidden
-    layer, which has 99 nodes. The output layer has two nodes (corresponding to the two classes, susceptible and resistent).
+    layer, which has 99 nodes. The output layer has two nodes (corresponding to the two classes, susceptible and resistant).
 
     So, for each type of features a dimensionality reduction is applied before concatenating it with the other types.
 
@@ -175,7 +175,7 @@ class late_fusion_nn(nn.Module):
     Baiscally it has a similar structure to the early fusion architecture, excpet for the fact that there are 100 nodes in the first hidden layer
     and 33 in the second hidden layer.
 
-    To classify samples into susceptible or resistent to a certain drug, three independent networks of this type are trained, one for
+    To classify samples into susceptible or resistant to a certain drug, three independent networks of this type are trained, one for
     each type of feature. Then each network will give its own class for the sample, and that sample will be assigned to the class chosen
     by the majority of the three networks.
 
@@ -209,7 +209,7 @@ def train_nn(features: list, drug: str, architecture: str):
     susceptibility and resistance to the selected drug. The weights of the model are then saved, ready to use for a future testing
     of the model performances.
 
-    The training is performed using a cross-entropy loss function and an Adam optimizer. The learning rate is 0.001.
+    The training is performed using a cross-entropy loss function and an Adam optimizer, for 150 epochs. The learning rate is 0.001.
 
     Parameters
     ----------
@@ -235,7 +235,7 @@ def train_nn(features: list, drug: str, architecture: str):
     #load dataset and define hyperparameters for model optimization
     dataloader = DataLoader(train_data, batch_size = 64)
     optimizer = torch.optim.Adam(model.parameters(), lr = 1e-3)
-    epochs = 100
+    epochs = 150
             
     #train the model
     for i in range(epochs):
@@ -257,7 +257,7 @@ def nn_test(architecture: str):
 
     The performance of the chosen architecture of neural network is tested for each drug and each combination of features, using the
     20% of samples that were kept in the test set and were not used for the training of the model. The performance is evaluated through
-    five scores: precision of susceptible and resistent classes, recall of susceptible and resistent classes, and accuracy of classification.
+    five scores: precision of susceptible and resistant classes, recall of susceptible and resistant classes, and accuracy of classification.
 
     Parameters
     ----------
@@ -352,6 +352,8 @@ def late_fusion_nn_test():
 
 if(__name__ == '__main__'):
     #for drug in ['Cef', 'Cip', 'Mer', 'Tob']:
-        #for features in [['genexp'], ['gpa'], ['snps']]:
-            #train_nn(features = features, drug = drug, architecture = 'late_fusion')
+        #for features in all_combinations_of_features:
+        #train_nn(features = ['genexp', 'gpa', 'snps'], drug=drug, architecture='intermediate_fusion')
+    nn_test(architecture = 'early_fusion')
+    nn_test(architecture = 'intermediate_fusion')
     late_fusion_nn_test()

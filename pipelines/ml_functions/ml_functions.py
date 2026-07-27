@@ -57,22 +57,22 @@ def weighted_train_test_split(drug: str, features: list, test_size: float, stand
     if drug not in ['Tob', 'Cef', 'Cip', 'Mer']:
         raise ValueError("Drug chosen is not one of the possible choices")
     
-    #keep only the index column and the column for the drug chosen in the dataset of targets
-    targets = pd.read_csv("./transformed_data/targets/targets.csv")
-    columns = [c for c in targets.columns if c in ["Index", "Strain", drug]]
-    targets = targets[columns]
+    #keep only the index column and the column for the drug chosen in the dataset of classes
+    classes = pd.read_csv("./transformed_data/classes/classes.csv")
+    columns = [c for c in classes.columns if c in ["Index", "Strain", drug]]
+    classes = classes[columns]
 
     #remove NaN values for the drug chosen
-    targets=targets.dropna(subset=drug)
+    classes=classes.dropna(subset=drug)
 
     #divide between s and r
-    Y_susceptible = targets[targets[drug]<0.5]
-    Y_resistent = targets[targets[drug]>0.5]
+    Y_susceptible = classes[classes[drug]<0.5]
+    Y_resistant = classes[classes[drug]>0.5]
 
-    #first split only the targets dataset, the input features will be splitted separately, so that gene expression data can be standardized
+    #first split only the classes dataset, the input features will be splitted separately, so that gene expression data can be standardized
     #after the division
     Y_train_s, Y_test_s = train_test_split(Y_susceptible, test_size=test_size, random_state=random_state)
-    Y_train_r, Y_test_r = train_test_split(Y_resistent, test_size=test_size, random_state=random_state)
+    Y_train_r, Y_test_r = train_test_split(Y_resistant, test_size=test_size, random_state=random_state)
 
     #separate output classes from "Index" and "Strain" columns
     Y_train_full=pd.concat([Y_train_s, Y_train_r]) #three columns: drug, index and strain
@@ -164,12 +164,12 @@ def _get_number_of_samples_by_class(predicted_classes: np.ndarray, real_classes:
     --------
         predict_count: list
             The number of samples in each class in the predicted set. The first element of the list is the number of samples in class
-            0 (susceptible), while the second element of the list is the number of samples in class 1 (resistent).
+            0 (susceptible), while the second element of the list is the number of samples in class 1 (resistant).
         real_count: list
             The number of samples in each class in the real test set. The first element of the list is the number of samples in class
-            0 (susceptible), while the second element of the list is the number of samples in class 1 (resistent).
+            0 (susceptible), while the second element of the list is the number of samples in class 1 (resistant).
     '''
-    #get the total number of predicted and real susceptible and resistent samples
+    #get the total number of predicted and real susceptible and resistant samples
     _, predicted_classes_counts = np.unique(predicted_classes, return_counts=True)
     _, real_classes_counts = np.unique(real_classes, return_counts=True)
 
