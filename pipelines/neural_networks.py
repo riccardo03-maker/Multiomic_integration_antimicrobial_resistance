@@ -39,8 +39,8 @@ def train_loop(dataloader, model, loss_fn, optimizer):
 
 def evaluate(model: nn.Module, X_test: torch.tensor, Y_test: torch.tensor, full_tensor: bool = False):
     '''
-    Evaluate model classification performances for a neural network, giving as output five scores: precision for susceptible and resistant,
-    recall for susceptible (0) and resistant (1), and accuracy.
+    Evaluate model classification performances for a neural network, giving as output five scores: precision for susceptible and resistent,
+    recall for susceptible (0) and resistent (1), and accuracy.
 
     Parameters
     ----------
@@ -51,8 +51,8 @@ def evaluate(model: nn.Module, X_test: torch.tensor, Y_test: torch.tensor, full_
         Y_test: torch.tensor
             The true output classes for each sample in the X_test set.
         full_tensor: bool (default: False)
-            If True, returns the tensor with the probabilities of each class for each sample. Otherwise, 
-            the function returns the classification scores.
+            If True, returns the tensor with the predicted classes for each sample. Otherwise, the function returns the classification
+            scores.
     Returns
     -------
         Y_predict: np.ndarray
@@ -60,11 +60,11 @@ def evaluate(model: nn.Module, X_test: torch.tensor, Y_test: torch.tensor, full_
         precision_s: float
             The precision score for the susceptible class.
         precision_r: float
-            The precision score for the resistant class.
+            The precision score for the resistent class.
         recall_s: float
             The recall score for the susceptible class.
         recall_r: float
-            The recall score for the resistant class.
+            The recall score for the resistent class.
         accuracy: float
             The accuracy of classification.
     '''
@@ -73,7 +73,7 @@ def evaluate(model: nn.Module, X_test: torch.tensor, Y_test: torch.tensor, full_
     Y_predict = pred.argmax(1)
     Y_predict = np.array(Y_predict.numpy(), dtype = np.int32)
     if full_tensor:
-        return softmax(pred, dim = 1).detach().numpy()
+        return Y_predict
 
     Y_test = np.array(Y_test.numpy(), dtype = np.int32)
 
@@ -315,7 +315,7 @@ def late_fusion_nn_test():
     result_table = pd.DataFrame(columns = ['drug', 'features', 'precision_s', 'precision_r', 'recall_s', 'recall_r', 'accuracy'])
 
     for drug in ['Cef', 'Cip', 'Mer', 'Tob']:
-        predictions = [] #list with the arrays of predicted classes for each combination of features
+        predicted_classes = [] #list with the arrays of predicted classes for each combination of features
         for features in [['genexp'], ['gpa'], ['snps']]:
             X_train, X_test, Y_train, Y_test = weighted_train_test_split(drug = drug, features = features, test_size = 0.2, standardize = True, random_state = 42)
             #using always the same random state for the train-test splitting ensures that the samples used for training and testing are
@@ -333,18 +333,19 @@ def late_fusion_nn_test():
             model.load_state_dict(torch.load("pipelines/nn_trained_models/late_fusion/late_fusion_" + features[0] + "_" + drug, weights_only=True))
             model.eval()
 
-            new_prediction = evaluate(model = model, X_test = X_test, Y_test = Y_test, full_tensor = True)
-            predictions.append(new_prediction)
+            Y_predict = evaluate(model = model, X_test = X_test, Y_test = Y_test, full_tensor = True)
+            predicted_classes.append(Y_predict)
 
-        sum_of_predictions = sum(predictions)
-        #sum the probabilities of the classes for each of the three networks, then classify the sample in the class with the total
-        #highest probability
-        predicted_classes = np.argmax(sum_of_predictions, axis = 1)
+        #combine the predictions by just summing them: if the sum is 2 or 3, the sample will be assigned to class 1, while if
+        #the sum is 1 or 0, the sample will be assigned to class 0
+        predicted_classes = np.array(predicted_classes, dtype = np.int32)
+        combine_predictions = np.sum(predicted_classes, axis = 0)
+        combine_predictions = np.array(combine_predictions >= 2, dtype = np.int32)
 
         #Y_test is always the same for the same drug, it is not needed to create it again using weighted_train_test_split with all features
-        result_table.loc[len(result_table)] = [drug, "genexp+gpa+snps", precision_score(Y_test, predicted_classes, pos_label = 0), 
-                                               precision_score(Y_test, predicted_classes, pos_label = 1), recall_score(Y_test, predicted_classes, pos_label = 0),
-                                               recall_score(Y_test, predicted_classes, pos_label=1), accuracy_score(Y_test, predicted_classes)]
+        result_table.loc[len(result_table)] = [drug, "genexp+gpa+snps", precision_score(Y_test, combine_predictions, pos_label = 0), 
+                                               precision_score(Y_test, combine_predictions, pos_label = 1), recall_score(Y_test, combine_predictions, pos_label = 0),
+                                               recall_score(Y_test, combine_predictions, pos_label=1), accuracy_score(Y_test, combine_predictions)]
         print("Iteration")
 
     result_table.to_csv("pipelines/results/neural_networks/late_fusion_scores.csv")
@@ -354,6 +355,6 @@ if(__name__ == '__main__'):
     #for drug in ['Cef', 'Cip', 'Mer', 'Tob']:
         #for features in all_combinations_of_features:
         #train_nn(features = ['genexp', 'gpa', 'snps'], drug=drug, architecture='intermediate_fusion')
-    nn_test(architecture = 'early_fusion')
-    nn_test(architecture = 'intermediate_fusion')
+    #nn_test(architecture = 'early_fusion')
+    #nn_test(architecture = 'intermediate_fusion')
     late_fusion_nn_test()

@@ -271,7 +271,7 @@ def late_fusion_relevant_features_test():
     all_coefficients_dataset = pd.read_csv("pipelines/results/log_reg_coefficients.csv")
     
     for drug in ['Cef', 'Cip', 'Mer', 'Tob']:
-        predictions = []
+        predicted_classes = []
         for features in [['genexp'], ['gpa'], ['snps']]:
             number_of_features = [] #list with the number of features for each type
 
@@ -307,18 +307,19 @@ def late_fusion_relevant_features_test():
                                               weights_only = True))
             model.eval()
 
-            new_prediction = evaluate(model = model, X_test = X_test, Y_test = Y_test, full_tensor = True)
-            predictions.append(new_prediction)
+            Y_predict = evaluate(model = model, X_test = X_test, Y_test = Y_test, full_tensor = True)
+            predicted_classes.append(Y_predict)
 
-        sum_of_predictions = sum(predictions)
-        #sum the probabilities of the classes for each of the three networks, then classify the sample in the class with the total
-        #highest probability
-        predicted_classes = np.argmax(sum_of_predictions, axis = 1)
+        #combine the predictions by just summing them: if the sum is 2 or 3, the sample will be assigned to class 1, while if
+        #the sum is 1 or 0, the sample will be assigned to class 0
+        predicted_classes = np.array(predicted_classes, dtype = np.int32)
+        combine_predictions = np.sum(predicted_classes, axis = 0)
+        combine_predictions = np.array(combine_predictions >= 2, dtype = np.int32)
 
         #Y_test is always the same for the same drug, it is not needed to create it again using weighted_train_test_split with all features
-        result_table.loc[len(result_table)] = [drug, "genexp+gpa+snps", precision_score(Y_test, predicted_classes, pos_label = 0), 
-                                               precision_score(Y_test, predicted_classes, pos_label = 1), recall_score(Y_test, predicted_classes, pos_label = 0),
-                                               recall_score(Y_test, predicted_classes, pos_label=1), accuracy_score(Y_test, predicted_classes)]
+        result_table.loc[len(result_table)] = [drug, "genexp+gpa+snps", precision_score(Y_test, combine_predictions, pos_label = 0), 
+                                               precision_score(Y_test, combine_predictions, pos_label = 1), recall_score(Y_test, combine_predictions, pos_label = 0),
+                                               recall_score(Y_test, combine_predictions, pos_label=1), accuracy_score(Y_test, combine_predictions)]
         print("Iteration")
 
     result_table.to_csv("pipelines/results/neural_networks/late_fusion_rf_scores.csv")
@@ -331,6 +332,6 @@ if(__name__ == '__main__'):
          #   train_relevant_features_nn(features = features, drug = drug, architecture = 'late_fusion')
         #for features in all_combinations_of_features:
          #   train_relevant_features_nn(features = features, drug = drug, architecture = 'early_fusion')
-    nn_relevant_features_test(architecture = 'early_fusion')
-    nn_relevant_features_test(architecture = 'intermediate_fusion')
+    #nn_relevant_features_test(architecture = 'early_fusion')
+    #nn_relevant_features_test(architecture = 'intermediate_fusion')
     late_fusion_relevant_features_test()
