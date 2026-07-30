@@ -283,17 +283,20 @@ if(__name__ == '__main__'):
     #cross_validate_model(model_name = 'svc', C = 0.1, kernel = 'linear', tol = 1e-6, class_weight = 'balanced')
     #cross_validate_model(model_name = 'svc', C = 0.1, kernel = 'poly', tol = 1e-6, gamma = 1., degree = 3, class_weight = 'balanced')
     #cross_validate_model(model_name = 'svm_paper', penalty = 'l1', loss = 'squared_hinge', max_iter = 1000000, tol = 0.000001,
-    #                   class_weight = "balanced", dual = False, C = 0.1)
+     #                  class_weight = "balanced", dual = False, C = 0.1)
     #cross_validate_model(model_name = 'svc', C = 0.1, kernel = 'rbf', tol = 1e-6, class_weight = 'balanced', gamma = 1.)
-    cross_validate_model(model_name = 'svc', C = 0.1, kernel = 'sigmoid', tol = 1e-6, class_weight = 'balanced', gamma = 1.)
-    #model_performance_test(model_name = 'log_reg', C = 0.1, l1_ratio = 1.0, tol = 1e-6, solver = 'liblinear', class_weight = 'balanced')
+    #cross_validate_model(model_name = 'svc', C = 0.1, kernel = 'sigmoid', tol = 1e-6, class_weight = 'balanced', gamma = 1.)
+    model_performance_test(model_name = 'log_reg', C = 0.1, l1_ratio = 1.0, tol = 1e-6, solver = 'liblinear', class_weight = 'balanced')
     #model_performance_test(model_name = 'lda', solver = 'svd')
     #model_performance_test(model_name = 'lda', solver = 'svd')
     #model_performance_test(model_name = 'knn', n_neighbors = 5)
-    #model_performance_test(model_name = 'svc', C = 0.1, kernel = 'linear', tol = 1e-6, class_weight = 'balanced')
-    #model_performance_test(model_name = 'svc', C = 0.1, kernel = 'poly', tol = 1e-6, gamma = 1., degree = 3, class_weight = 'balanced')
-    #model_performance_test(model_name = 'svm_paper', penalty = 'l1', loss = 'squared_hinge', max_iter = 1000000, tol = 0.000001,
-                            #class_weight = "balanced", dual = False, C = 0.1)
+    model_performance_test(model_name = 'svc', C = 0.1, kernel = 'linear', tol = 1e-6, class_weight = 'balanced')
+    model_performance_test(model_name = 'svc', C = 0.1, kernel = 'poly', tol = 1e-6, gamma = 1., degree = 3, class_weight = 'balanced')
+    model_performance_test(model_name = 'svm_paper', penalty = 'l1', loss = 'squared_hinge', max_iter = 1000000, tol = 0.000001,
+                            class_weight = "balanced", dual = False, C = 0.1)
     #model_performance_test(model_name = 'svc', C = 0.1, kernel = 'rbf', tol = 1e-6, class_weight = 'balanced', gamma = 1.)
-    model_performance_test(model_name = 'svc', C = 0.1, kernel = 'sigmoid', tol = 1e-6, class_weight = 'balanced', gamma = 1.)
+    #model_performance_test(model_name = 'svc', C = 0.1, kernel = 'sigmoid', tol = 1e-6, class_weight = 'balanced', gamma = 1.)
     #get_logistic_regression_coefficients()
+    #model_performance_test(model_name = 'svm_paper', penalty = 'l1', loss = 'squared_hinge', max_iter = 1000000, tol = 0.000001, 
+     #dual = False, C = 0.1)
+    #model_performance_test(model_name = 'log_reg', C = 0.1, l1_ratio = 1.0, tol = 1e-6, solver = 'liblinear')
