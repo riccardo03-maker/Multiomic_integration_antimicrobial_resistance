@@ -164,15 +164,15 @@ if(__name__ == '__main__'):
         subprocess.run(["rm", "pipelines/results/ml_algorithms/svc_sigmoid/*"])
         subprocess.run(["rm", "pipelines/results/ml_algorithms/svm_paper/*"])
         subprocess.run(["rm", "pipelines/results/neural_networks/*"])
-        subprocess.run(["rm", "-r", "pipelines/nn_trained_models/*"])
+        subprocess.run(["rm", "-rf", "pipelines/nn_trained_models/*"])
 
 
     if args.algorithm == 'log_reg':
         if args.cross:
             ml_algorithms.cross_validate_model(model_name = 'log_reg', C = 0.1, l1_ratio = 1.0, tol = 1e-6, solver = 'liblinear', 
-                                             class_weight = 'balanced')
+                                             class_weight = 'balanced', random_state = 42)
         ml_algorithms.model_performance_test(model_name = 'log_reg', C = 0.1, l1_ratio = 1.0, tol = 1e-6, solver = 'liblinear', 
-                                             class_weight = 'balanced')
+                                             class_weight = 'balanced', random_state = 42)
         
     elif args.algorithm == 'knn':
         if args.cross:

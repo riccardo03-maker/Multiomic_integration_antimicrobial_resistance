@@ -1,7 +1,7 @@
-#create the directory with the neural network models
-mkdir pipelines/nn_trained_models
-cd pipelines/nn_trained_models
-
-#clone the repository with the models
+#clone the repository with the models in the pipelines directory
+cd pipelines
 git clone https://github.com/riccardo03-maker/Neural_networks_antimicrobial_resistance
-cd ../../
+
+#rename folder
+mv Neural_networks_antimicrobial_resistance ./nn_trained_models
+cd ../
