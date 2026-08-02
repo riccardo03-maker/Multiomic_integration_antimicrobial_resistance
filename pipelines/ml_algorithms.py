@@ -103,7 +103,7 @@ def pca():
                 features = scale(features.toarray()) #standardization cannot be done using sparse matrices, so we convert into np.ndarray
                 features = csr_array(features)
 
-            pca = PCA(n_components = 2)
+            pca = PCA(n_components = 2, random_state = 42)
             pca.fit(features)
             samples_projected = pca.transform(features)
 
