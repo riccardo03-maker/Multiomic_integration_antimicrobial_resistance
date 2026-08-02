@@ -1,5 +1,4 @@
-#install R and Python requirements
-Rscript R_scripts/install_requirements.R
+#install Python requirements
 pip install -r requirements.txt
 
 #decompress raw data
@@ -14,12 +13,11 @@ mkdir transformed_data/classes
 #create reference list with the 414 strains. This is just the list of strains in snps data, which does not contain extra strains
 cp ./raw_data/features_gpa_expr_snps/snps/snps_strains_list.txt ./transformed_data/strains_list.txt
 
-#use the Python script to create sparse matrix of features for the three types of omic data
-python data_transformation/data_transformation.py
-
+#copy table with classes for each drug
 cp ./raw_data/metadata/phenotypes.txt ./transformed_data/classes
 #substitute all tabulations with comma, for later .csv conversion
 sed -i 's/\t/,/g' ./transformed_data/classes/phenotypes.txt
 
-#use R scripts to create .csv file of antibiotic resistance classes
-Rscript R_scripts/classes_csv.R
+#use the Python script to create sparse matrix of features for the three types of omic data,
+#and to create the csv file with classes
+python data_transformation/data_transformation.py

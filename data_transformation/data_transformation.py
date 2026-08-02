@@ -3,7 +3,7 @@
 
 from scipy.sparse import csr_array, save_npz
 import numpy as np
-from collections import Counter
+import pandas as pd
 
 __author__=['Riccardo Grandicelli']
 __email__=['riccardograndicelli03@gmail.com']
@@ -35,6 +35,7 @@ def create_list_of_all_strains(file_path: str) -> list:
 def transform_features(data: str) -> csr_array:
     '''
     Transform raw features data, creating sparse matrices with 414 rows (the number of strains) and columns given by the features.
+    It also removes the extra strains present in genexp and gpa data.
 
     Parameters
     ----------
@@ -66,8 +67,23 @@ def transform_features(data: str) -> csr_array:
     return data_matrix
 
 
+def create_classes():
+    '''
+    Create a csv file with susceptibility and resistance to the four drugs for each sample.
+    '''
+    classes = pd.read_csv("transformed_data/classes/phenotypes.txt")
+    classes = classes.loc[:, ~classes.columns.str.startswith("Colistin")]
+    classes = classes.assign(Index = range(len(classes)))
+
+    classes.columns = ["Strain", "Tob", "Cef", "Cip", "Mer", "Index"]
+    classes.to_csv("./transformed_data/classes/classes.csv")
+
+
 if (__name__ == '__main__'):
     #transform gene expression, gpa and snps data
     for feature in ['genexp', 'gpa', 'snps']:
         data_matrix = transform_features(feature)
         save_npz("./transformed_data/features/" + feature + "_features.npz", data_matrix)
+
+    #create table with susceptibility and resistance to the four drugs for all samples
+    create_classes()
