@@ -164,7 +164,12 @@ if(__name__ == '__main__'):
         subprocess.run("rm pipelines/results/ml_algorithms/svc_sigmoid/*", shell = True)
         subprocess.run("rm pipelines/results/ml_algorithms/svm_paper/*", shell = True)
         subprocess.run("rm pipelines/results/neural_networks/*", shell = True)
-        subprocess.run("rm -rf pipelines/nn_trained_models/*", shell = True)
+        subprocess.run("rm -rf pipelines/nn_trained_models/early_fusion/*", shell = True)
+        subprocess.run("rm -rf pipelines/nn_trained_models/early_fusion_rf/*", shell = True)
+        subprocess.run("rm -rf pipelines/nn_trained_models/intermediate_fusion/*", shell = True)
+        subprocess.run("rm -rf pipelines/nn_trained_models/intermediate_fusion_rf/*", shell = True)
+        subprocess.run("rm -rf pipelines/nn_trained_models/late_fusion/*", shell = True)
+        subprocess.run("rm -rf pipelines/nn_trained_models/late_fusion_rf/*", shell = True)
 
 
     if args.algorithm == 'log_reg':
