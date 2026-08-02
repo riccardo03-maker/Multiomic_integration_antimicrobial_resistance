@@ -21,3 +21,6 @@ sed -i 's/\t/,/g' ./transformed_data/classes/phenotypes.txt
 #use the Python script to create sparse matrix of features for the three types of omic data,
 #and to create the csv file with classes
 python data_transformation/data_transformation.py
+
+#create folder to store neural network models
+mkdir pipelines/nn_trained_models
