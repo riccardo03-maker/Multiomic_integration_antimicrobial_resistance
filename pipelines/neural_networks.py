@@ -10,7 +10,7 @@ from sklearn.metrics import precision_score, recall_score, accuracy_score
 import numpy as np
 import pandas as pd
 
-from ml_functions.ml_functions import weighted_train_test_split
+from .ml_functions.ml_functions import weighted_train_test_split
 
 __author__=['Riccardo Grandicelli']
 __email__=['riccardograndicelli03@gmail.com']

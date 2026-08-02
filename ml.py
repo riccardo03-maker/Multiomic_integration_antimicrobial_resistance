@@ -1,0 +1,262 @@
+#!/usr/bin/python
+# -*- coding: utf-8 -*-
+
+import argparse
+import subprocess
+from pipelines import ml_algorithms
+from pipelines import neural_networks
+from pipelines import relevant_features_nn
+
+__author__=['Riccardo Grandicelli']
+__email__=['riccardograndicelli03@gmail.com']
+
+
+if(__name__ == '__main__'):
+    '''
+    Implement a command line interface that allows the execution of all the machine learning pipelines of the project and 
+    the re-creation of the plots.
+    '''
+    parser = argparse.ArgumentParser()#formatter_class = argparse.RawTextHelpFormatter)
+
+    parser.add_argument(
+        '--algorithm', '-a',
+        dest = 'algorithm',
+        required = False,
+        action = 'store',
+        default = None,
+        help = '''The machine learning algorithm to be executed. Can be one of the following:
+            - log_reg: logistic regression
+            - lda: linear discriminant analysis
+            - knn: K-nearest neighbours
+            - svc: support vector classification (the kernel can be specified with the --kernel argument)
+            - svc_l1: support vector classification with linear kernel and l1 regularization
+            - pca: principal component analysis
+            - log_coef: create the table of coefficients in logistic regression with all the three types of features
+            - early_fusion: neural network with early fusion architecture
+            - intermediate_fusion: neural network with intermediate fusion architecture
+            - late_fusion: neural network with late fusion architecture
+        
+    By default, for classical machine learning algorithms (so all options except for the three fusion architectures), only the scores obtained on the test set are calculated. To compute also cross-validation scores, use the --cross flag.
+
+    By default, the neural network architectures use all the features. To use only the relevant features, use the --rf flag.
+        ''',
+        choices = ['log_reg', 'lda', 'knn', 'svc', 'svc_l1', 'early_fusion', 'intermediate_fusion', 'late_fusion', 'pca', 'log_coef']
+    )
+
+    parser.add_argument(
+        '--kernel', '-k',
+        dest = 'kernel',
+        required = False,
+        action = 'store',
+        default = 'linear',
+        help = '''The kernel used for the support vector classification algorithm. Can be one of the following:
+            - linear: linear kernel
+            - poly: degree 3 polynomial kernel
+            - rbf: Gaussian kernel
+            - sigmoid: sigmoidal kernel
+
+        This option is considered only when the --algorithm option is equal to 'svc'.
+        ''',
+        choices = ['linear', 'poly', 'rbf', 'sigmoid']
+    )
+
+    parser.add_argument(
+        '--cross', '-c',
+        dest = 'cross',
+        required = False,
+        action = 'store_true',
+        default = False,
+        help = '''Computes the cross-validation score together with the score on the test set.
+        
+        If the --algorithm option is equal to 'early_fusion', 'intermediate_fusion' or 'late_fusion', or if this option is not provided, this option is ignored.
+        '''
+    )
+
+    parser.add_argument(
+        '--relevant', '-f',
+        dest = 'relevant',
+        required = False,
+        action = 'store_true',
+        default = False,
+        help = '''Computes the coefficients of all the features in the logistic regression using all three types of feature, for all the drugs. The coefficients different from 0 represent the relevant features (used for feature selection in the neural network architectures).
+        '''
+    )
+
+    parser.add_argument(
+        '--rf', '-r',
+        dest = 'rf',
+        required = False,
+        action = 'store_true',
+        default = False,
+        help = '''Uses only the features that in the logistic regression had a coefficient different from 0 to train or test the neural network. 
+            
+        If the --algorithm option is not provided, or if it is different from 'early_fusion', 'intermediate_fusion' or 'late_fusion', this option is ignored.
+        '''
+    )
+
+    parser.add_argument(
+        '--train', '-t',
+        dest = 'train',
+        required = False,
+        action = 'store_true',
+        default = False,
+        help = '''Trains the neural network before calculating the classification scores. 
+            
+        If the --algorithm option is not provided, or if it is different from 'early_fusion', 'intermediate_fusion' or 'late_fusion', this option is ignored.
+        '''
+    )
+
+    parser.add_argument(
+        '--plot', '-p',
+        dest = 'plot',
+        required = False,
+        action = 'store',
+        default = None,
+        help = '''The number of the figure in the 'plots' folder to re-create using the ggplot2 library of R. Can be any integer number between 1 and 7, except for 3 and 6 (since these figures have not been created with ggplot2).
+
+        For figures 2, 4 and 7, only the single plots are created. The complete figures were created from the single plots using an image editor, and therefore they cannot be re-created using ggplot2.
+        ''',
+        choices = ['1', '2', '4', '5', '7']
+    )
+
+    parser.add_argument(
+        '--download', '-d',
+        dest = 'download',
+        required = False,
+        action = 'store_true',
+        default = False,
+        help = '''Download the neural network models already trained, which are stored in the GitHub repository https://github.com/riccardo03-maker/Neural_networks_antimicrobial_resistance
+        '''
+    )
+
+    parser.add_argument(
+        '--erase', '-e',
+        dest = 'erase',
+        required = False,
+        action = 'store_true',
+        default = False,
+        help = '''Erase all the files that can be created through this command line interface. This includes:
+                - All the plots, except for figure 3 and 6, and the complete figures 2, 4 and 7
+                - The cross-validation and test scores, for both classical machine learning algorithms and neural networks
+                - The table with the coefficients of features in logistic regression
+                - The tables with pca results
+                - The trained neural network models
+        '''
+    )
+
+    args = parser.parse_args()
+
+    if args.erase:
+        #erase all files that can be created through the scripts in this repository
+        subprocess.run(["rm", "plots/figure_1.png"])
+        subprocess.run(["rm", "plots/figure_5.png"])
+        subprocess.run(["rm", "plots/figure_2/pca*"])
+        subprocess.run(["rm", "plots/figure_4/*scores.png"])
+        subprocess.run(["rm", "plots/figure_7/*scores.png"])
+        subprocess.run(["rm", "pipelines/results/log_reg_coefficients.csv"])
+        subprocess.run(["rm", "pipelines/results/pca/*"])
+        subprocess.run(["rm", "pipelines/results/ml_algorithms/knn/*"])
+        subprocess.run(["rm", "pipelines/results/ml_algorithms/lda/*"])
+        subprocess.run(["rm", "pipelines/results/ml_algorithms/log_reg/*"])
+        subprocess.run(["rm", "pipelines/results/ml_algorithms/svc_linear/*"])
+        subprocess.run(["rm", "pipelines/results/ml_algorithms/svc_poly/*"])
+        subprocess.run(["rm", "pipelines/results/ml_algorithms/svc_rbf/*"])
+        subprocess.run(["rm", "pipelines/results/ml_algorithms/svc_sigmoid/*"])
+        subprocess.run(["rm", "pipelines/results/ml_algorithms/svm_paper/*"])
+        subprocess.run(["rm", "pipelines/results/neural_networks/*"])
+        subprocess.run(["rm", "-r", "pipelines/nn_trained_models/*"])
+
+
+    if args.algorithm == 'log_reg':
+        if args.cross:
+            ml_algorithms.cross_validate_model(model_name = 'log_reg', C = 0.1, l1_ratio = 1.0, tol = 1e-6, solver = 'liblinear', 
+                                             class_weight = 'balanced')
+        ml_algorithms.model_performance_test(model_name = 'log_reg', C = 0.1, l1_ratio = 1.0, tol = 1e-6, solver = 'liblinear', 
+                                             class_weight = 'balanced')
+        
+    elif args.algorithm == 'knn':
+        if args.cross:
+            ml_algorithms.cross_validate_model(model_name = 'knn', n_neighbors = 5)
+        ml_algorithms.model_performance_test(model_name = 'knn', n_neighbors = 5)
+
+    elif args.algorithm == 'lda':
+        if args.cross:
+            ml_algorithms.cross_validate_model(model_name = 'lda', solver = 'svd')
+        ml_algorithms.model_performance_test(model_name = 'lda', solver = 'svd')
+
+    elif args.algorithm == 'svc':
+        if args.cross:
+            ml_algorithms.cross_validate_model(model_name = 'svc', C = 0.1, kernel = args.kernel, tol = 1e-6, 
+                                               gamma = 1., degree = 3, class_weight = 'balanced')
+        ml_algorithms.model_performance_test(model_name = 'svc', C = 0.1, kernel = args.kernel, tol = 1e-6, 
+                                               gamma = 1., degree = 3, class_weight = 'balanced')
+        
+    elif args.algorithm == 'svc_l1':
+        if args.cross:
+            ml_algorithms.cross_validate_model(model_name = 'svm_paper', penalty = 'l1', loss = 'squared_hinge', max_iter = 1000000, 
+                                               tol = 0.000001, class_weight = "balanced", dual = False, C = 0.1)
+        ml_algorithms.model_performance_test(model_name = 'svm_paper', penalty = 'l1', loss = 'squared_hinge', max_iter = 1000000, 
+                                               tol = 0.000001, class_weight = "balanced", dual = False, C = 0.1)
+    
+    elif args.algorithm == 'early_fusion':
+        if args.rf:
+            if args.train:
+                for drug in ['Cef', 'Cip', 'Mer', 'Tob']:
+                    for features in relevant_features_nn.all_combinations_of_features:
+                        relevant_features_nn.train_relevant_features_nn(features = features, drug = drug, architecture = 'early_fusion')
+            relevant_features_nn.nn_relevant_features_test(architecture = 'early_fusion')
+        else:
+            if args.train:
+                for drug in ['Cef', 'Cip', 'Mer', 'Tob']:
+                    for features in neural_networks.all_combinations_of_features:
+                        neural_networks.train_nn(features = features, drug = drug, architecture = 'early_fusion')
+            neural_networks.nn_test(architecture = 'early_fusion')
+
+    elif args.algorithm == 'intermediate_fusion':
+        if args.rf:
+            if args.train:
+                for drug in ['Cef', 'Cip', 'Mer', 'Tob']:
+                    relevant_features_nn.train_relevant_features_nn(features = ['genexp', 'gpa', 'snps'], drug = drug, 
+                                                                    architecture = 'intermediate_fusion')
+            relevant_features_nn.nn_relevant_features_test(architecture = 'intermediate_fusion')
+        else:
+            if args.train:
+                for drug in ['Cef', 'Cip', 'Mer', 'Tob']:
+                    neural_networks.train_nn(features = ['genexp', 'gpa', 'snps'], drug = drug, architecture = 'intermediate_fusion')
+            neural_networks.nn_test(architecture = 'intermediate_fusion')
+
+    elif args.algorithm == 'late_fusion':
+        if args.rf:
+            if args.train:
+                for drug in ['Cef', 'Cip', 'Mer', 'Tob']:
+                    for features in [['genexp'], ['gpa'], ['snps']]:
+                        relevant_features_nn.train_relevant_features_nn(features = features, drug = drug, architecture = 'late_fusion')
+            relevant_features_nn.late_fusion_relevant_features_test()
+        else:
+            if args.train:
+                for drug in ['Cef', 'Cip', 'Mer', 'Tob']:
+                    for features in [['genexp'], ['gpa'], ['snps']]:
+                        neural_networks.train_nn(features = features, drug = drug, architecture = 'late_fusion')
+            neural_networks.late_fusion_nn_test()
+
+    elif args.algorithm == 'pca':
+        ml_algorithms.pca()
+
+    elif args.algorithm == 'log_coef':
+        ml_algorithms.get_logistic_regression_coefficients()
+
+
+    if args.plot == '1':
+        subprocess.run(["Rscript", "R_scripts/figure_1.R"])
+    elif args.plot == '2':
+        subprocess.run(["Rscript", "R_scripts/figure_2.R"])
+    elif args.plot == '4':
+        subprocess.run(["Rscript", "R_scripts/figure_4.R"])
+    elif args.plot == '5':
+        subprocess.run(["Rscript", "R_scripts/figure_5.R"])
+    elif args.plot == '7':
+        subprocess.run(["Rscript", "R_scripts/figure_7.R"])
+
+
+    if args.download:
+        subprocess.run(["bash", "bash_scripts/download_nn_models.sh"])

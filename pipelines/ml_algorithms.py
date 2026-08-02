@@ -10,7 +10,7 @@ from sklearn.preprocessing import scale
 from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
 from sklearn.neighbors import KNeighborsClassifier
 
-from ml_functions.ml_functions import weighted_train_test_split, create_list_of_all_features
+from .ml_functions.ml_functions import weighted_train_test_split, create_list_of_all_features
 import numpy as np
 import pandas as pd
 from scipy.sparse import load_npz, csr_array

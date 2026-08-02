@@ -9,8 +9,8 @@ from sklearn.metrics import precision_score, recall_score, accuracy_score
 import numpy as np
 import pandas as pd
 
-from ml_functions.ml_functions import weighted_train_test_split, get_non_zero_features, create_list_of_all_features
-from neural_networks import train_loop, evaluate
+from .ml_functions.ml_functions import weighted_train_test_split, get_non_zero_features, create_list_of_all_features
+from .neural_networks import train_loop, evaluate
 
 __author__=['Riccardo Grandicelli']
 __email__=['riccardograndicelli03@gmail.com']
