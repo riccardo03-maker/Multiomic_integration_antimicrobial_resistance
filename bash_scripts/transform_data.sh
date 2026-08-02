@@ -22,5 +22,11 @@ sed -i 's/\t/,/g' ./transformed_data/classes/phenotypes.txt
 #and to create the csv file with classes
 python data_transformation/data_transformation.py
 
-#create folder to store neural network models
+#create folders to store neural network models
 mkdir pipelines/nn_trained_models
+mkdir pipelines/early_fusion
+mkdir pipelines/early_fusion_rf
+mkdir pipelines/intermediate_fusion
+mkdir pipelines/intermediate_fusion_rf
+mkdir pipelines/late_fusion
+mkdir pipelines/late_fusion_rf
