@@ -199,9 +199,9 @@ if(__name__ == '__main__'):
     elif args.algorithm == 'svc_l1':
         if args.cross:
             ml_algorithms.cross_validate_model(model_name = 'svm_paper', penalty = 'l1', loss = 'squared_hinge', max_iter = 1000000, 
-                                               tol = 0.000001, class_weight = "balanced", dual = False, C = 0.1)
+                                               tol = 0.000001, class_weight = "balanced", dual = False, C = 0.1, random_state = 42)
         ml_algorithms.model_performance_test(model_name = 'svm_paper', penalty = 'l1', loss = 'squared_hinge', max_iter = 1000000, 
-                                               tol = 0.000001, class_weight = "balanced", dual = False, C = 0.1)
+                                               tol = 0.000001, class_weight = "balanced", dual = False, C = 0.1, random_state = 42)
     
     elif args.algorithm == 'early_fusion':
         if args.rf:
