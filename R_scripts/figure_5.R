@@ -43,6 +43,7 @@ all_scores <- bind_rows(knn_scores, lda_scores, svc_linear_scores, svc_poly_scor
 all_scores <- all_scores %>%
     filter(drug == 'Mer')
 
+
 #plot recall of susceptible samples for Meropenem
 p <- ggplot(data = all_scores, aes(x = algorithm, y = recall_s, fill = features)) +
     geom_bar(stat = "identity") +

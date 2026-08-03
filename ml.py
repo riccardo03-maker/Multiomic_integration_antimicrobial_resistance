@@ -102,7 +102,7 @@ if(__name__ == '__main__'):
         required = False,
         action = 'store_true',
         default = False,
-        help = '''Erase all the files that can be created through this command line interface.
+        help = '''Erase all the files that can be created through this command line application.
         '''
     )
 

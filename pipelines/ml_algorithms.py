@@ -24,67 +24,10 @@ features_strings = ["genexp", "genexp+snps", "gpa", "genexp+gpa", "genexp+gpa+sn
 drugs = ['Cef', 'Cip', 'Mer', 'Tob']
 
 
-def svm_paper_cv():
-    '''
-    Implement a cross-validation pipeline to find the best combination of data to predict antimicrobial resistance. Based on the original paper.
-    It perfoms cross-validation to find, for each drug, the combination of features (gene expression, gpa and snps) that gives the best
-    predictive performances
-
-    This algorithm uses the linear Support Vector Classification (SVC), with an L1 regularization and a squared loss. The full dataset with
-    the selected features (the procedure is repeated for each drug and for each combination of features) is divided into a train and a
-    test set with respectively 80% and 20% of data, keeping the same proportion between isolates susceptible and resistant to the
-    selected drug.
-
-    Then the performance of the linear SVC is evaluated on the train dataset through a 10-fold cross validation. The score used to evaluate
-    the classification performances is the macro f1 score (in particular the average of the macro f1 scores obtained in each iteration
-    of the cross-validation loop). The cross-validation is repeated 5 times for each drug and each combination of data, and the final score
-    is given by the average over the scores obtained in the 5 repetitions.
-
-    In the paper, the optimal value of the C parameter used in the linear SVC is found to a nested cross-validation. Here we don't repeat
-    the nested cross-validation, which is computationally expensive, and we just use the best value of C found in the analysis performed
-    by the authors of the paper.
-
-    References:
-    -----------
-        Best values of C: https://github.com/hzi-bifo/Predicting_PA_AMR_paper/blob/master/feature_curves/best_models.txt
-    '''
-    c_params = [[0.025, 0.01, 0.04, 0.015, 0.01, 0.04, 0.025], [0.02, 0.02, 0.04, 0.02, 0.015, 0.05, 0.07],
-            [0.025, 0.025, 0.1, 0.04, 0.15, 0.07, 0.02], [0.085, 0.015, 0.04, 0.03, 0.015, 0.07, 0.07]]
-    
-    scores_array = np.zeros(shape = (7, 4), dtype = np.float64)
-    standard_deviation_array = np.zeros(shape = (7, 4), dtype = np.float64)
-
-    for i, drug in enumerate(drugs):
-        for j, features in enumerate(all_combinations_of_features):
-
-            X_train, X_test, Y_train, Y_test = weighted_train_test_split(drug = drug, features = features, test_size = 0.2, random_state  = 42)
-            #use a seed for random number generation, so that the splitting between train and test set is always
-            #the same for the same drug, and results can be compared more easily
-
-            svm_model = LinearSVC(penalty = 'l1', loss = 'squared_hinge', max_iter = 1000000, tol = 0.000001,
-                                      class_weight = "balanced", dual = False, C = 0.1)
-            cv_scores = np.array([], dtype = np.float64)
-
-            for k in range(5):
-                #Perform a 10-fold cross validation 5 times, and average over the different results
-                cv = StratifiedKFold(n_splits=10, shuffle=True, random_state=k)
-                single_iteration_scores = cross_val_score(svm_model, X=X_train, y=Y_train, cv=cv, scoring = 'f1_macro', n_jobs = 1)
-                cv_scores = np.concatenate((cv_scores, single_iteration_scores))
-
-            scores_array[j][i] = cv_scores.mean()
-            standard_deviation_array[j][i] = cv_scores.std()
-            print("Iteration")
-    
-    scores_data = pd.DataFrame(data = scores_array, index = features_strings, columns = drugs)
-    std_data = pd.DataFrame(data = standard_deviation_array, index = features_strings, columns = drugs)
-    scores_data.to_csv("./pipelines/results/ml_algorithms/svm_paper/svm_paper_cv_scores.csv")
-    std_data.to_csv("./pipelines/results/ml_algorithms/svm_paper/svm_paper_cv_std.csv")
-
-
 def pca():
     '''
     Implement a PCA for all the three types of features, to see if two principal components are enough to split samples correctly
-    into the two classes.
+    into the two classes. All samples are used for PCA, without dividing into train and test sets.
     '''
     for drug in drugs:
         #create datasets of input features and output classes, but without dividing into train and test sets
@@ -123,14 +66,17 @@ ml_models = {'svc': SVC, 'log_reg': LogisticRegression, 'knn': KNeighborsClassif
 def cross_validate_model(model_name: str, **kwargs):
     '''
     Given a certain machine learning model, this function implements a cross-validation pipeline to select, for each drug, 
-    the combination of features with the best classification performance.
+    the combination of features with the best classification performances.
 
-    For each drug and each combination of feature types (gene expression, gpa and snps), the full dataset is divided into a train and
+    For each drug and each combination of feature types (genexp, gpa and snps), the full dataset is divided into a train and
     a test set, using 80% of samples for training and 20% for testing, keeping the same proportions between samples susceptible and 
-    resistant to a certain drug. Then, a 5-fold cross-validation is applied on the training set, and classification performances are
-    evaluated by averaging over the accuracy score obtained at each cross-validation loop. The whole cross-validation procedure is
-    repeated five times for each drug and each combination of features, and the final classification score is given by averaging over the
-    accuracies obtained in each one of the five iterations.
+    resistant to a certain drug. Then, a 5-fold cross-validation is applied on the training set. The train set is divided into five 
+    folds, and at each iteration of the cross-validation a score is calculated by training the machine learning model on four folds 
+    and validating it on the remaining one. So, for each cross-validation we get five scores. The cross-validation is repeated five 
+    times, and at the end the score assigned to a certain combination of features for a certain drug is given by the mean of the 25
+    scores obtained in this way.
+
+    The cross-validation scores are calculated using the f1 macro score.
 
     The hyperparameters of the selected model are not optimized using cross-validation, but they can be given as input instead.
 
@@ -138,8 +84,9 @@ def cross_validate_model(model_name: str, **kwargs):
 
     Parameters
     ----------
-        model_name: str
-            The machine learning model whose performances are evaluated through cross-validation.
+        model_name: {'svc', 'log_reg', 'knn', 'lda', 'svm_paper'}
+            The name of the machine learning model whose performances are evaluated through cross-validation. 'svm_paper' corresponds
+            to the support vector classification implemented in the paper from which data are taken.
         **kwargs:
             Optional parameters for the machine learning model selected.
     '''
@@ -161,7 +108,7 @@ def cross_validate_model(model_name: str, **kwargs):
             cv_scores = np.array([], dtype = np.float64)
     
             for k in range(5):
-                #Perform a 5-fold cross validation 5 times, and average over the different results
+                #Perform a 5-fold cross validation 5 times, and average over all the scores
                 cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=k)
                 single_iteration_scores = cross_val_score(model, X=X_train, y=Y_train, cv=cv, scoring = 'f1_macro', n_jobs = 1)
                 cv_scores = np.concatenate((cv_scores, single_iteration_scores)) 
@@ -189,7 +136,7 @@ def model_performance_test(model_name: str, **kwargs):
     so that the samples ending in the train or in the test set are always the same for a certain drug. In this way the test set is
     completely independent from the samples used for cross-validation.
 
-    The selected machine learning model is then trained on the training set, and its classification performances evaluated on the test
+    The selected machine learning model is then trained on the full training set, and its classification performances evaluated on the test
     set. Performances are evaluated through five scores: precision (for both susceptible and resistant classes), recall (again for both
     classes), and accuracy of classification.
 
@@ -197,8 +144,9 @@ def model_performance_test(model_name: str, **kwargs):
 
     Parameters:
     ----------
-        model_name: str
-            The machine learning model whose performances are evaluated through cross-validation.
+        model_name: {'svc', 'log_reg', 'knn', 'lda', 'svm_paper'}
+            The machine learning model whose performances are going to be tested. 'svm_paper' corresponds to the support vector 
+            classification implemented in the paper from which data are taken.
         **kwargs:
             Optional parameters for the machine learning model selected.
     '''
@@ -242,14 +190,14 @@ def model_performance_test(model_name: str, **kwargs):
 
 def get_logistic_regression_coefficients():
     '''
-    Return all the features that have a coefficient different from 0 in the logistic regression with Lasso regularization.
+    Implement a logistic regression with Lasso regularization, and get the coefficients of all the features.
 
     For each drug and for each type of feature (genexp, gpa and snps), the full dataset of input features is split into a training 
     and a test set. Then, the model is trained on the whole train set, and all the coefficients of the features are saved in a csv
     file.
 
     Each row of the dataset stored in the csv file corresponds to a drug, and each column to a feature. The entries represent the coefficient
-    of a feature in the logistic regression fitted using that type of feature as input.
+    of a feature in the logistic regression fitted using as input all the features of the type to which that feature belongs.
     '''
     coefficients = pd.DataFrame(columns = create_list_of_all_features(['genexp', 'gpa', 'snps']))
     #give a name to the features in the final dataset with the coefficients
@@ -274,32 +222,3 @@ def get_logistic_regression_coefficients():
         coefficients.loc[len(coefficients)] = coefficients_array[0] #use [0] because coefficients are stored as a column vectors
 
     coefficients.to_csv("pipelines/results/log_reg_coefficients.csv")
-
-
-if(__name__ == '__main__'):
-    cross_validate_model(model_name = 'log_reg', C = 0.1, l1_ratio = 1.0, tol = 1e-6, solver = 'liblinear', class_weight = 'balanced',
-                        random_state = 42)
-    #l1 ratio = 1 is the Lasso regularization
-    #cross_validate_model(model_name = 'lda', solver = 'svd')
-    #cross_validate_model(model_name = 'knn', n_neighbors = 5)
-    #cross_validate_model(model_name = 'svc', C = 0.1, kernel = 'linear', tol = 1e-6, class_weight = 'balanced')
-    #cross_validate_model(model_name = 'svc', C = 0.1, kernel = 'poly', tol = 1e-6, gamma = 1., degree = 3, class_weight = 'balanced')
-    #cross_validate_model(model_name = 'svm_paper', penalty = 'l1', loss = 'squared_hinge', max_iter = 1000000, tol = 0.000001,
-     #                  class_weight = "balanced", dual = False, C = 0.1)
-    #cross_validate_model(model_name = 'svc', C = 0.1, kernel = 'rbf', tol = 1e-6, class_weight = 'balanced', gamma = 1.)
-    #cross_validate_model(model_name = 'svc', C = 0.1, kernel = 'sigmoid', tol = 1e-6, class_weight = 'balanced', gamma = 1.)
-    model_performance_test(model_name = 'log_reg', C = 0.1, l1_ratio = 1.0, tol = 1e-6, solver = 'liblinear', class_weight = 'balanced',
-                           random_state = 42)
-    #model_performance_test(model_name = 'lda', solver = 'svd')
-    #model_performance_test(model_name = 'lda', solver = 'svd')
-    #model_performance_test(model_name = 'knn', n_neighbors = 5)
-    #model_performance_test(model_name = 'svc', C = 0.1, kernel = 'linear', tol = 1e-6, class_weight = 'balanced')
-    #model_performance_test(model_name = 'svc', C = 0.1, kernel = 'poly', tol = 1e-6, gamma = 1., degree = 3, class_weight = 'balanced')
-    #model_performance_test(model_name = 'svm_paper', penalty = 'l1', loss = 'squared_hinge', max_iter = 1000000, tol = 0.000001,
-     #                       class_weight = "balanced", dual = False, C = 0.1)
-    #model_performance_test(model_name = 'svc', C = 0.1, kernel = 'rbf', tol = 1e-6, class_weight = 'balanced', gamma = 1.)
-    #model_performance_test(model_name = 'svc', C = 0.1, kernel = 'sigmoid', tol = 1e-6, class_weight = 'balanced', gamma = 1.)
-    #get_logistic_regression_coefficients()
-    #model_performance_test(model_name = 'svm_paper', penalty = 'l1', loss = 'squared_hinge', max_iter = 1000000, tol = 0.000001, 
-     #dual = False, C = 0.1)
-    #model_performance_test(model_name = 'log_reg', C = 0.1, l1_ratio = 1.0, tol = 1e-6, solver = 'liblinear')

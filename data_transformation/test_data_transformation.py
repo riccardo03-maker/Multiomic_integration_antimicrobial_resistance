@@ -9,9 +9,9 @@ __email__=['riccardograndicelli03@gmail.com']
 
 def test_list_of_all_strains():
     '''
-    Test the correct creation of the list of all strains.
+    Test the correct creation of the list with the names of all strains.
 
-    GIVEN: the list of all strains in the file "transformed_data/strains_list.txt".
+    GIVEN: the list with the names of all strains in the file "transformed_data/strains_list.txt".
     WHEN: I create the list of all strains from that file path.
     THEN: I get a list with 414 elements with the right names.
     '''

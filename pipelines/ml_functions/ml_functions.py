@@ -5,7 +5,6 @@ from scipy.sparse import load_npz, hstack, csr_array
 import numpy as np
 import pandas as pd
 from collections import Counter
-import math
 
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import scale
@@ -20,7 +19,7 @@ def weighted_train_test_split(drug: str, features: list, test_size: float, stand
     into train and test set, keeping in both sets the same proportion between susceptible and resistant to a certain drug.
 
     If required, this function can also standardize gene expression data (they are already standardized, but before the division
-    between train and test sets, so train and test data are not really independent). Gpa and snps data don't need to be standardized
+    between train and test sets, so train and test sets are not really independent). Gpa and snps data don't need to be standardized
     because they are binary data (either 0 or 1).
 
     Parameters
@@ -39,8 +38,8 @@ def weighted_train_test_split(drug: str, features: list, test_size: float, stand
             Random seed for reproducibility.
         full_Y: bool (default: False)
             If True, returns the output classes datasets (Y_train and Y_test) as pandas.DataFrame, keeping also the strains names and their
-            indexes (the index is just the order they appear in the list of all strains). If False, returns the output classes datasets as
-            numpy.ndarray, removing indexes and strains and keeping only the classes for the selected drug.
+            indexes. If False, returns the output classes datasets as numpy.ndarray, removing indexes and strains and keeping only 
+            the classes for the selected drug.
     Returns
     -------
         X_train, X_test: csr_array
@@ -57,26 +56,26 @@ def weighted_train_test_split(drug: str, features: list, test_size: float, stand
     if drug not in ['Tob', 'Cef', 'Cip', 'Mer']:
         raise ValueError("Drug chosen is not one of the possible choices")
     
-    #keep only the index column and the column for the drug chosen in the dataset of classes
+    #keep only the drug chosen
     classes = pd.read_csv("./transformed_data/classes/classes.csv")
     columns = [c for c in classes.columns if c in ["Index", "Strain", drug]]
     classes = classes[columns]
 
     #remove NaN values for the drug chosen
-    classes=classes.dropna(subset=drug)
+    classes = classes.dropna(subset = drug)
 
     #divide between s and r
-    Y_susceptible = classes[classes[drug]<0.5]
-    Y_resistant = classes[classes[drug]>0.5]
+    Y_susceptible = classes[classes[drug] < 0.5]
+    Y_resistant = classes[classes[drug] > 0.5]
 
     #first split only the classes dataset, the input features will be splitted separately, so that gene expression data can be standardized
     #after the division
-    Y_train_s, Y_test_s = train_test_split(Y_susceptible, test_size=test_size, random_state=random_state)
-    Y_train_r, Y_test_r = train_test_split(Y_resistant, test_size=test_size, random_state=random_state)
+    Y_train_s, Y_test_s = train_test_split(Y_susceptible, test_size = test_size, random_state = random_state)
+    Y_train_r, Y_test_r = train_test_split(Y_resistant, test_size = test_size, random_state = random_state)
 
-    #separate output classes from "Index" and "Strain" columns
-    Y_train_full=pd.concat([Y_train_s, Y_train_r]) #three columns: drug, index and strain
-    Y_test_full=pd.concat([Y_test_s, Y_test_r])
+    #unify susceptible and resistant samples
+    Y_train_full = pd.concat([Y_train_s, Y_train_r]) #three columns: drug, index and strain name
+    Y_test_full = pd.concat([Y_test_s, Y_test_r])
 
     #get the indexes of train and test samples, to split also input data
     train_indexes = Y_train_full["Index"].tolist()
@@ -129,10 +128,10 @@ def get_non_zero_features(data: pd.DataFrame, drug: str, feature: str):
             The dataset with the coefficients of all the features obtained in the logistic regression with Lasso regularization.
             The dataset is given as input instead of being load into the function because it is a large dataset, and opening it
             requires time, so this allows to open it only once when this function is called several times in a single execution.
-        drug: str
-            The selected drug among the four possible choices ('Cef', 'Cip', 'Mer', 'Tob').
-        feature: str
-            The type of feature required (can be either 'genexp', 'gpa' or 'snps').
+        drug: {'Cef', 'Cip', 'Mer', 'Tob'}
+            The selected drug.
+        feature: {'genexp', 'gpa' or 'snps'}
+            The type of feature required.
     Returns
     -------
         relevant_features: list of str
@@ -144,43 +143,7 @@ def get_non_zero_features(data: pd.DataFrame, drug: str, feature: str):
     #select only the rows where the coefficient for the selected drug is not 0
     
     relevant_features = data.T.columns
-
     return relevant_features
-
-
-def _get_number_of_samples_by_class(predicted_classes: np.ndarray, real_classes: np.ndarray):
-    '''
-    This function is used after a classification pipeline, by giving as input the test set with the real output classes and the set with
-    the predicted classes. The function counts how many samples are classified in each class, both for the real classes and 
-    for the predicted classes.
-
-    Parameters:
-    -----------
-        predicted_classes: np.ndarray
-            The dataset with the predicted class of each sample in the test set.
-        real_classes: np.ndarray
-            The test set with the real class of each sample
-    Returns:
-    --------
-        predict_count: list
-            The number of samples in each class in the predicted set. The first element of the list is the number of samples in class
-            0 (susceptible), while the second element of the list is the number of samples in class 1 (resistant).
-        real_count: list
-            The number of samples in each class in the real test set. The first element of the list is the number of samples in class
-            0 (susceptible), while the second element of the list is the number of samples in class 1 (resistant).
-    '''
-    #get the total number of predicted and real susceptible and resistant samples
-    _, predicted_classes_counts = np.unique(predicted_classes, return_counts=True)
-    _, real_classes_counts = np.unique(real_classes, return_counts=True)
-
-    if len(predicted_classes_counts) == 1: #case when all samples are classified into the same class:
-        #in this case predicted_classes has only one element, so we have to add a 0 in the right position of the list
-        if math.isclose(predicted_classes[0], 0.):
-            predicted_classes_counts = [len(predicted_classes), 0]
-        else:
-            predicted_classes_counts = [0, len(predicted_classes)]
-    
-    return predicted_classes_counts, real_classes_counts
 
 
 def create_list_of_all_features(features: list):
@@ -209,6 +172,6 @@ def create_list_of_all_features(features: list):
         with open("raw_data/features_gpa_expr_snps/" + feature + "/" + feature + "_feature_list.txt") as file:
             new_features = list(file)
             new_features = [feat.rstrip("\n") for feat in new_features]
-            #eliminate "\n" characters that are at the end of each strain in the list
+            #eliminate "\n" characters that are at the end of each feature in the list
         features_list += new_features
     return features_list

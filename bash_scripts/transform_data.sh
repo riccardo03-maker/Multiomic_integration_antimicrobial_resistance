@@ -10,7 +10,7 @@ mkdir transformed_data
 mkdir transformed_data/features
 mkdir transformed_data/classes
 
-#create reference list with the 414 strains. This is just the list of strains in snps data, which does not contain extra strains
+#create reference list with the names of the 414 strains. This is just the list of strains in snps data, which does not contain extra strains
 cp ./raw_data/features_gpa_expr_snps/snps/snps_strains_list.txt ./transformed_data/strains_list.txt
 
 #copy table with classes for each drug

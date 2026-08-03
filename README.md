@@ -22,9 +22,7 @@ Rscript -e 'install.packages("tidyverse", repos="https://cloud.r-project.org")'
 
 ## Configuration
 
-To use this repository, first clone it in your working directory
-
-To install the `SandNet` package, first clone this repository
+To use this repository, first clone it into your working directory
 
 ```bash
 git clone https://github.com/riccardo03-maker/Multiomic_integration_antimicrobial_resistance
@@ -81,7 +79,7 @@ options:
                         figures were built from the single plots using an image editor, and therefore they cannot be re-created using ggplot2.
   --download, -d        Download the neural network models already trained, which are stored in the GitHub repository
                         https://github.com/riccardo03-maker/Neural_networks_antimicrobial_resistance
-  --erase, -e           Erase all the files that can be created through this command line interface.
+  --erase, -e           Erase all the files that can be created through this command line application.
 ```
 
 Each output of the code (which can be for example a csv file of scores, or a plot) is stored in a dedicated folder. So, the `ml.py` must always be executed from the project root directory to have all outputs stored in the correct folders.
@@ -95,7 +93,7 @@ The `--algorithm` option allows the execution of a machine learning pipeline (bo
 * svc: support vector classification (the kernel can be specified with the `--kernel` argument)
 * svc_l1: support vector classification with linear kernel and l1 regularization
 * pca: principal component analysis
-* log_coef: create the table of coefficients in logistic regression with all the three types of features
+* log_coef: create the table of coefficients in logistic regression (the file used to extract the relevant features for neural networks)
 * early_fusion: neural network with early fusion architecture
 * intermediate_fusion: neural network with intermediate fusion architecture
 * late_fusion: neural network with late fusion architecture
@@ -130,7 +128,7 @@ The `--erase` option removes all the files that can be created using this comman
 
 ## Testing
 
-A set of test functions are provided to test the behaviour of some functions that are frequently used in the machine learning pipelines. These test functions are stored in the [`test_data_transformation.py`](https://github.com/riccardo03-maker/Multiomic_integration_antimicrobial_resistance/blob/main/data_transformation/test_data_transformation.py) and in the [`test_ml_functions.py`](https://github.com/riccardo03-maker/Multiomic_integration_antimicrobial_resistance/blob/main/pipelines/ml_functions/test_ml_functions.py) scripts, and they can be run directly from the project root directory using the `pytest` package
+A set of test functions are provided to test the behaviour of some functions that are used in the machine learning pipelines. These test functions are stored in the [`test_data_transformation.py`](https://github.com/riccardo03-maker/Multiomic_integration_antimicrobial_resistance/blob/main/data_transformation/test_data_transformation.py) and in the [`test_ml_functions.py`](https://github.com/riccardo03-maker/Multiomic_integration_antimicrobial_resistance/blob/main/pipelines/ml_functions/test_ml_functions.py) scripts, and they can be run directly from the project root directory using the `pytest` package
 
 ```bash
 python -m pytest
@@ -147,7 +145,7 @@ Description of the folders of this repository
 |[data_transformation](https://github.com/riccardo03-maker/Multiomic_integration_antimicrobial_resistance/tree/main/data_transformation)| Python functions (and relative tests) for raw data transformation|
 |[pipelines](https://github.com/riccardo03-maker/Multiomic_integration_antimicrobial_resistance/tree/main/pipelines)| Code and results for all machine learning pipelines|
 |[plots](https://github.com/riccardo03-maker/Multiomic_integration_antimicrobial_resistance/tree/main/plots)|All figures used in the project (not only those created with `ggplot2`)|
-|[raw_data](https://github.com/riccardo03-maker/Multiomic_integration_antimicrobial_resistance/tree/main/raw_data)| Raw data taken directly from [1]|
+|[raw_data](https://github.com/riccardo03-maker/Multiomic_integration_antimicrobial_resistance/tree/main/raw_data)| Raw data taken directly from [[1](#references)]|
 |transformed_data| Folder with transformed data ready to be used (this folder is created during raw data transformation)|
 |[ml.py](https://github.com/riccardo03-maker/Multiomic_integration_antimicrobial_resistance/blob/main/ml.py)| Command line interface to execute all functions in this repository|
 

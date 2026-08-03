@@ -4,7 +4,6 @@
 import torch
 from torch import nn
 from torch.utils.data import DataLoader, TensorDataset
-from torch import softmax
 
 from sklearn.metrics import precision_score, recall_score, accuracy_score
 import numpy as np
@@ -39,8 +38,8 @@ def train_loop(dataloader, model, loss_fn, optimizer):
 
 def evaluate(model: nn.Module, X_test: torch.tensor, Y_test: torch.tensor, full_tensor: bool = False):
     '''
-    Evaluate model classification performances for a neural network, giving as output five scores: precision for susceptible and resistent,
-    recall for susceptible (0) and resistent (1), and accuracy.
+    Evaluate model classification performances for a neural network, giving as output five scores: precision for susceptible and resistant,
+    recall for susceptible and resistant, and accuracy.
 
     Parameters
     ----------
@@ -127,10 +126,10 @@ class intermediate_fusion_nn(nn.Module):
     So, for each type of features a dimensionality reduction is applied before concatenating it with the other types.
 
     Parameters
-        ----------
-            number_of_features: int
-                The number of input features. This parameter is irrelevant for the intermediate fusion architecture, but it is
-                relevant for compatibility in the train_nn and test_nn functions.
+    ----------
+        number_of_features: int
+            The number of input features. This parameter is irrelevant for the intermediate fusion architecture, but it is
+            relevant for compatibility in the train_nn and nn_test functions.
     '''
     def __init__(self, number_of_features: int):
         super().__init__()
@@ -172,7 +171,7 @@ class late_fusion_nn(nn.Module):
     '''
     This class defines a neural network with the late fusion architecture.
 
-    Baiscally it has a similar structure to the early fusion architecture, excpet for the fact that there are 100 nodes in the first hidden layer
+    Basically it has a similar structure to the early fusion architecture, excpet for the fact that there are 100 nodes in the first hidden layer
     and 33 in the second hidden layer.
 
     To classify samples into susceptible or resistant to a certain drug, three independent networks of this type are trained, one for
@@ -215,9 +214,9 @@ def train_nn(features: list, drug: str, architecture: str):
     ----------
         features: list of str
             The types of features used as input for the neural network. Elements of this list can be either 'genexp', 'gpa' or 'snps'.
-        drug: str
-            The drug for which the neural network has to predict susceptibility or resistance. Must be either 'Cef', 'Cip', 'Mer' or 'Tob'.
-        architecture: str
+        drug: {'Cef', 'Cip', 'Mer', 'Tob'}
+            The drug for which the neural network has to predict susceptibility or resistance.
+        architecture: {'early_fusion', 'intermediate_fusion', 'late_fusion'}
             The type of neural network that is going to be trained.
     '''
     X_train, X_test, Y_train, Y_test = weighted_train_test_split(drug = drug, features = features, test_size = 0.2, standardize = True, random_state = 42)
@@ -261,8 +260,9 @@ def nn_test(architecture: str):
 
     Parameters
     ----------
-        architecture: str
-            The architecture of the neural network whose performances are being tested
+        architecture: {'early_fusion', 'intermediate_fusion'}
+            The architecture of the neural network whose performances are being tested. The late fusion architecture has its own
+            dedicated testing function.
     '''
     result_table = pd.DataFrame(columns = ['drug', 'features', 'accuracy_training', 'precision_s', 'precision_r', 'recall_s', 'recall_r', 'accuracy'])
 
@@ -273,7 +273,7 @@ def nn_test(architecture: str):
 
             X_train, X_test, Y_train, Y_test = weighted_train_test_split(drug = drug, features = features, test_size = 0.2, standardize = True, random_state = 42)
             #using always the same random state for the train-test splitting ensures that the samples used for training and testing are
-            #always the same in all functions (for a certain drug and a certain combination of features)
+            #always the same in all functions (for a certain drug)
             number_of_features = X_train.shape[1]
 
             #transform data into torch tensors
@@ -292,7 +292,7 @@ def nn_test(architecture: str):
             model.load_state_dict(torch.load("pipelines/nn_trained_models/" + architecture + "/" + architecture + "_" + filename, weights_only=True))
             model.eval()
 
-            #test performances on the training set
+            #test performances on the training set. This score should always be close or equal to 1.
             _, _, _, _, accuracy_training = evaluate(model = model, X_test = X_train, Y_test = Y_train)
     
             #test performances on the test set
@@ -310,7 +310,7 @@ def late_fusion_nn_test():
 
     This function has the same role of the nn_test function, but it is applied on late fusion architecture. In this case, three independent
     classifications are performed for each sample using three networks trained on the three different feature types, then the sample is
-    assigned to the class chosen by the majority of the three networks
+    assigned to the class chosen by the majority of the three networks.
     '''
     result_table = pd.DataFrame(columns = ['drug', 'features', 'precision_s', 'precision_r', 'recall_s', 'recall_r', 'accuracy'])
 
@@ -349,12 +349,3 @@ def late_fusion_nn_test():
         print("Iteration")
 
     result_table.to_csv("pipelines/results/neural_networks/late_fusion_scores.csv")
-
-
-if(__name__ == '__main__'):
-    #for drug in ['Cef', 'Cip', 'Mer', 'Tob']:
-        #for features in all_combinations_of_features:
-        #train_nn(features = ['genexp', 'gpa', 'snps'], drug=drug, architecture='intermediate_fusion')
-    #nn_test(architecture = 'early_fusion')
-    #nn_test(architecture = 'intermediate_fusion')
-    late_fusion_nn_test()

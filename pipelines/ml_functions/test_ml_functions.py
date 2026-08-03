@@ -1,4 +1,4 @@
-from ml_functions import weighted_train_test_split, get_non_zero_features, _get_number_of_samples_by_class, create_list_of_all_features
+from ml_functions import weighted_train_test_split, get_non_zero_features, create_list_of_all_features
 import pytest
 from scipy.sparse import csr_array
 import pandas as pd
@@ -124,7 +124,8 @@ def test_no_standardization_for_other_data():
 
     GIVEN: input features relative to gpa.
     WHEN: I split data into train and test sets, with standardization of gene expression data after the splitting.
-    THEN: each feature of gpa has either the value 0 or 1 for each sample (isolate). So train and test set contain just two different values
+    THEN: each feature of gpa has either the value 0 or 1 for each sample, meaning that data have not been standardized. 
+    So train and test sets contain just two different values.
     '''
     X_train, X_test, _, _ = weighted_train_test_split(drug = 'Tob', features = ['gpa'], test_size = 0.2, standardize = True, random_state = 42)
     X_train = X_train.toarray()
@@ -140,7 +141,7 @@ def test_list_of_non_zero_features():
     '''
     Test the correct creation of the list of features with a coefficient different from 0 in the logistic regression
 
-    GIVEN: the data with all the coefficients for all features in logistic regression, for all drugs
+    GIVEN: data with all the coefficients for all features in logistic regression, for all drugs
     WHEN: I create the list of all the features with coefficients different from 0 for the Ceftazidim drug, for all the three types of
     features
     THEN: the total number of features of the three types is 78 (counted using R)
@@ -152,50 +153,8 @@ def test_list_of_non_zero_features():
     assert(len(relevant_features_genexp) + len(relevant_features_gpa) + len(relevant_features_snps) == 78)
 
 
-# Testing count of assignments to susceptible and resistant classes
-
-
-def test_count_class_assignment():
-    '''
-    Test the correct count of the number of samples assigned to each class after a classification performance.
-
-    GIVEN: a test set with 20 samples, 13 belonging to class 0 (susceptible) and 7 belonging to class 1 (resistant), and a set
-    of predicted classes with 9 samples classified as susceptible and 11 classified as resistant.
-    WHEN: I count the number of samples in each class for both test set and predicted set.
-    THEN: the count returns the correct values.
-    '''
-    real_classes = [0., 1., 0., 0., 1., 1., 1., 0., 0., 0., 0., 0., 1., 0., 0., 1., 1., 0., 0., 0.]
-    predicted_classes = [0., 1., 1., 1., 0., 0., 1., 1., 1., 1., 0., 0., 1., 0., 0., 1., 1., 0., 0., 1.]
-
-    predict_counts, real_counts = _get_number_of_samples_by_class(predicted_classes, real_classes)
-
-    assert(predict_counts[0] == 9)
-    assert(predict_counts[1] == 11)
-    assert(real_counts[0] == 13)
-    assert(real_counts[1] == 7)
-
-
-def test_all_samples_in_one_class():
-    '''
-    Test the correct behaviour of the _get_number_of_samples_by_class function when predicted classes of all the samples is the same.
-
-    GIVEN: a test set with 20 samples, 13 belonging to class 0 (susceptible) and 7 belonging to class 1 (resistant), and a set
-    of predicted classes with all samples classified as resistant.
-    WHEN: I count the number of samples in each class for both test set and predicted set.
-    THEN: the count returns the correct values.
-    '''
-    real_classes = [0., 1., 0., 0., 1., 1., 1., 0., 0., 0., 0., 0., 1., 0., 0., 1., 1., 0., 0., 0.]
-    predicted_classes = [1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1.]
-
-    predict_counts, real_counts = _get_number_of_samples_by_class(predicted_classes, real_classes)
-
-    assert(predict_counts[0] == 0)
-    assert(predict_counts[1] == 20)
-    assert(real_counts[0] == 13)
-    assert(real_counts[1] == 7)
-
-
 # Testing creation list of all features
+
 
 def test_list_of_all_features():
     '''

@@ -60,7 +60,7 @@ class intermediate_fusion_relevant_features_nn(nn.Module):
     It takes as input all the features of the three types (gene expression, gpa and snps). The first and second hidden layers are composed by three
     separated fully connected branches, one for each feature type and each one with a number of nodes equal to the number of features
     of that type. Then the three branches are merged in the third hidden layer, which has a number of nodes equal to the sum of the
-    features of the three types 99. The output layer has two nodes (corresponding to the two classes, susceptible and resistant).
+    features of the three types. The output layer has two nodes (corresponding to the two classes, susceptible and resistant).
     
     Parameters
     ----------
@@ -114,8 +114,8 @@ class intermediate_fusion_relevant_features_nn(nn.Module):
 loss_fn = nn.CrossEntropyLoss()
 neural_networks = {'early_fusion': early_fusion_relevant_features_nn, 'intermediate_fusion': intermediate_fusion_relevant_features_nn, 
                    'late_fusion': early_fusion_relevant_features_nn}
-#the late fusion architecture is just composed by three neural networks, one for each type of feature. Each network takes a decision about
-#the class of a sample independently, and then the class chosen by the majority of networks is chosen. 
+#the late fusion architecture is just composed by three early fusionneural networks, one for each type of feature. Each network takes
+# a decision about the class of a sample independently, and then the class chosen by the majority of networks is chosen. 
 
 
 def train_relevant_features_nn(features: list, drug: str, architecture: str):
@@ -130,13 +130,14 @@ def train_relevant_features_nn(features: list, drug: str, architecture: str):
     ----------
         features: list of str
             The types of feature used as input for the neural network. Elements of this list can be either 'genexp', 'gpa' or 'snps'.
-        drug: str
-            The drug for which the neural network has to predict susceptibility or resistance. Must be either 'Cef', 'Cip', 'Mer' or 'Tob'.
-        architecture: str
+        drug: {'Cef', 'Cip', 'Mer', 'Tob'}
+            The drug for which the neural network has to predict susceptibility or resistance.
+        architecture: {'early_fusion', 'intermediate_fusion', 'late_fusion'}
             The type of neural network that is going to be trained.
     '''
     number_of_features = [] #list with the number of features for each type
     all_coefficients_dataset = pd.read_csv("pipelines/results/log_reg_coefficients.csv")
+
     for k, feature in enumerate(features):
         all_features = create_list_of_all_features([feature])
         relevant_features = get_non_zero_features(all_coefficients_dataset, drug, feature)
@@ -196,8 +197,9 @@ def nn_relevant_features_test(architecture: str):
     
     Parameters
     ----------
-        architecture: str
-            The architecture of the neural network whose performances are being tested
+        architecture: {'early_fusion', 'intermediate_fusion'}
+            The architecture of the neural network whose performances are being tested. The late fusion architecture has its own
+            dedicated testing function.
     '''
     result_table = pd.DataFrame(columns = ['drug', 'features', 'accuracy_training', 'precision_s', 'precision_r', 'recall_s', 'recall_r', 'accuracy'])
     all_coefficients_dataset = pd.read_csv("pipelines/results/log_reg_coefficients.csv")
@@ -206,8 +208,6 @@ def nn_relevant_features_test(architecture: str):
         for j, features in enumerate(all_combinations_of_features):
             if(architecture == 'intermediate_fusion' and len(features) != 3):
                 continue #in architectures different from the early fusion, all features are used
-            if(architecture == 'late_fusion' and len(features) != 1):
-                continue
 
             number_of_features = [] #list with the number of features for each type
             for k, feature in enumerate(features):
@@ -323,15 +323,3 @@ def late_fusion_relevant_features_test():
         print("Iteration")
 
     result_table.to_csv("pipelines/results/neural_networks/late_fusion_rf_scores.csv")
-
-
-if(__name__ == '__main__'):
-    #for drug in ['Cef', 'Cip', 'Mer', 'Tob']:
-       # train_relevant_features_nn(features=['genexp', 'gpa', 'snps'], drug = drug, architecture = 'intermediate_fusion')
-        #for features in [['genexp'], ['gpa'], ['snps']]:
-         #   train_relevant_features_nn(features = features, drug = drug, architecture = 'late_fusion')
-        #for features in all_combinations_of_features:
-         #   train_relevant_features_nn(features = features, drug = drug, architecture = 'early_fusion')
-    #nn_relevant_features_test(architecture = 'early_fusion')
-    #nn_relevant_features_test(architecture = 'intermediate_fusion')
-    late_fusion_relevant_features_test()

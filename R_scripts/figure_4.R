@@ -68,6 +68,7 @@ cef_plot <- ggplot(data = cef_scores, aes(x = algorithm, y = accuracy, fill = fe
     theme(axis.text.x = element_text(angle = 90, hjust = 1))
 ggsave("plots/figure_4/cef_scores.png", plot = cef_plot, width = 6.67, height = 6.67)
 
+
 cip_scores <- all_scores %>%
    filter(drug == 'Cip')
 
@@ -80,6 +81,7 @@ cip_plot <- ggplot(data = cip_scores, aes(x = algorithm, y = accuracy, fill = fe
     theme(axis.text.x = element_text(angle = 90, hjust = 1))
 ggsave("plots/figure_4/cip_scores.png", plot = cip_plot, width = 6.67, height = 6.67)
 
+
 mer_scores <- all_scores %>%
    filter(drug == 'Mer')
 
@@ -91,6 +93,7 @@ mer_plot <- ggplot(data = mer_scores, aes(x = algorithm, y = accuracy, fill = fe
     geom_text(aes(label = round(accuracy, digits = 2), vjust = 2)) +
     theme(axis.text.x = element_text(angle = 90, hjust = 1))
 ggsave("plots/figure_4/mer_scores.png", plot = mer_plot, width = 6.67, height = 6.67)
+
 
 tob_scores <- all_scores %>%
    filter(drug == 'Tob')
