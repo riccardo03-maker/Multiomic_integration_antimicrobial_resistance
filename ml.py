@@ -24,21 +24,8 @@ if(__name__ == '__main__'):
         required = False,
         action = 'store',
         default = None,
-        help = '''The machine learning algorithm to be executed. Can be one of the following:
-            - log_reg: logistic regression
-            - lda: linear discriminant analysis
-            - knn: K-nearest neighbours
-            - svc: support vector classification (the kernel can be specified with the --kernel argument)
-            - svc_l1: support vector classification with linear kernel and l1 regularization
-            - pca: principal component analysis
-            - log_coef: create the table of coefficients in logistic regression with all the three types of features
-            - early_fusion: neural network with early fusion architecture
-            - intermediate_fusion: neural network with intermediate fusion architecture
-            - late_fusion: neural network with late fusion architecture
-        
-    By default, for classical machine learning algorithms (so all options except for the three fusion architectures), only the scores obtained on the test set are calculated. To compute also cross-validation scores, use the --cross flag.
-
-    By default, the neural network architectures use all the features. To use only the relevant features, use the --rf flag.
+        help = '''The machine learning algorithm to be executed. By default, for classical machine learning algorithms (so all options except for the three fusion architectures), only the scores obtained on the test set are calculated. To compute also cross-validation scores, use the --cross flag.
+                    By default, the neural network architectures use all the features. To use only the relevant features, use the --rf flag.
         ''',
         choices = ['log_reg', 'lda', 'knn', 'svc', 'svc_l1', 'early_fusion', 'intermediate_fusion', 'late_fusion', 'pca', 'log_coef']
     )
@@ -49,13 +36,7 @@ if(__name__ == '__main__'):
         required = False,
         action = 'store',
         default = 'linear',
-        help = '''The kernel used for the support vector classification algorithm. Can be one of the following:
-            - linear: linear kernel
-            - poly: degree 3 polynomial kernel
-            - rbf: Gaussian kernel
-            - sigmoid: sigmoidal kernel
-
-        This option is considered only when the --algorithm option is equal to 'svc'.
+        help = '''The kernel used for the support vector classification algorithm. This option is considered only when the --algorithm option is equal to 'svc'.
         ''',
         choices = ['linear', 'poly', 'rbf', 'sigmoid']
     )
@@ -67,18 +48,7 @@ if(__name__ == '__main__'):
         action = 'store_true',
         default = False,
         help = '''Computes the cross-validation score together with the score on the test set.
-        
-        If the --algorithm option is equal to 'early_fusion', 'intermediate_fusion' or 'late_fusion', or if this option is not provided, this option is ignored.
-        '''
-    )
-
-    parser.add_argument(
-        '--relevant', '-f',
-        dest = 'relevant',
-        required = False,
-        action = 'store_true',
-        default = False,
-        help = '''Computes the coefficients of all the features in the logistic regression using all three types of feature, for all the drugs. The coefficients different from 0 represent the relevant features (used for feature selection in the neural network architectures).
+        If the --algorithm option is not provided or it is equal to 'early_fusion', 'intermediate_fusion' or 'late_fusion', this option is ignored.
         '''
     )
 
@@ -89,7 +59,6 @@ if(__name__ == '__main__'):
         action = 'store_true',
         default = False,
         help = '''Uses only the features that in the logistic regression had a coefficient different from 0 to train or test the neural network. 
-            
         If the --algorithm option is not provided, or if it is different from 'early_fusion', 'intermediate_fusion' or 'late_fusion', this option is ignored.
         '''
     )
@@ -101,7 +70,6 @@ if(__name__ == '__main__'):
         action = 'store_true',
         default = False,
         help = '''Trains the neural network before calculating the classification scores. 
-            
         If the --algorithm option is not provided, or if it is different from 'early_fusion', 'intermediate_fusion' or 'late_fusion', this option is ignored.
         '''
     )
@@ -112,9 +80,8 @@ if(__name__ == '__main__'):
         required = False,
         action = 'store',
         default = None,
-        help = '''The number of the figure in the 'plots' folder to re-create using the ggplot2 library of R. Can be any integer number between 1 and 7, except for 3 and 6 (since these figures have not been created with ggplot2).
-
-        For figures 2, 4 and 7, only the single plots are created. The complete figures were created from the single plots using an image editor, and therefore they cannot be re-created using ggplot2.
+        help = '''The number of the figure in the 'plots' folder to re-create using the ggplot2 library of R. Figures 3 and 6 cannot be re-created (since these figures have not been done with ggplot2).
+        For figures 2, 4 and 7, only the single plots are created. The complete figures were built from the single plots using an image editor, and therefore they cannot be re-created using ggplot2.
         ''',
         choices = ['1', '2', '4', '5', '7']
     )
@@ -135,12 +102,7 @@ if(__name__ == '__main__'):
         required = False,
         action = 'store_true',
         default = False,
-        help = '''Erase all the files that can be created through this command line interface. This includes:
-                - All the plots, except for figure 3 and 6, and the complete figures 2, 4 and 7
-                - The cross-validation and test scores, for both classical machine learning algorithms and neural networks
-                - The table with the coefficients of features in logistic regression
-                - The tables with pca results
-                - The trained neural network models
+        help = '''Erase all the files that can be created through this command line interface.
         '''
     )
 
