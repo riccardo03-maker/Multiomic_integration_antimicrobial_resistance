@@ -28,7 +28,14 @@ def pca():
     '''
     Implement a PCA for all the three types of features, to see if two principal components are enough to split samples correctly
     into the two classes. All samples are used for PCA, without dividing into train and test sets.
+
+    Values of the two principal components for each feature type and for each sample are saved in four different csv files, one for
+    each drug. Moreover, all percentages of explained variance of the two principal components (for each drug and each feature type)
+    are saved in a different csv file.
     '''
+    #create a dataset with the explained variance of the two principal components for each drug and each feature type
+    explained_variance_table = pd.DataFrame(columns = ['Drug_feature', 'Explained_variance_1', 'Explained_variance_2'])
+
     for drug in drugs:
         #create datasets of input features and output classes, but without dividing into train and test sets
         classes = pd.read_csv("./transformed_data/classes/classes.csv")
@@ -53,9 +60,14 @@ def pca():
             classes.insert(len(classes.columns), feature + "_1", samples_projected[:, 0])
             classes.insert(len(classes.columns), feature + "_2", samples_projected[:, 1])
 
+            #insert explained variance in the apposite dataset
+            explained_variance_table.loc[len(explained_variance_table)] = [drug + '_' + feature, pca.explained_variance_ratio_[0],
+                                                                           pca.explained_variance_ratio_[1]]
+
             print("Iteration")
         
         classes.to_csv("pipelines/results/pca/pca_" + drug + ".csv")
+    explained_variance_table.to_csv("pipelines/results/pca/explained_variance.csv")
 
 
 #dictionary with all machine learning models used

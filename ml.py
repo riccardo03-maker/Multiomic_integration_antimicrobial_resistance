@@ -48,7 +48,7 @@ if(__name__ == '__main__'):
         action = 'store_true',
         default = False,
         help = '''Computes the cross-validation score together with the score on the test set.
-        If the --algorithm option is not provided or it is equal to 'early_fusion', 'intermediate_fusion' or 'late_fusion', this option is ignored.
+        If the --algorithm option is not provided or it is equal to 'early_fusion', 'intermediate_fusion', 'late_fusion' or 'pca', this option is ignored.
         '''
     )
 
