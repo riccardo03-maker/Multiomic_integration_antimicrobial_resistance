@@ -13,14 +13,87 @@ __author__=['Riccardo Grandicelli']
 __email__=['riccardograndicelli03@gmail.com']
 
 
-def weighted_train_test_split(drug: str, features: list, test_size: float, standardize: bool = False, random_state: int = None, full_Y: bool = False):
+class GenexpStandardizer():
+    '''
+    This class is implemented as a scikit-learn Transformer. Similarly to a StandardScaler of scikit-learn, it standardizes the training
+    set while learning its mean and standard deviation, then it can apply the same standardization (with same mean and standard deviation)
+    to the test/validation set.
+
+    However, differently from a StandardScaler, ths standardization is applied only on gene expression data (which are already standardized,
+    but before the division between train and test sets, so train and test sets are not really independent). On the contrary, gpa and 
+    snps data don't need to be standardized because they are binary data (either 0 or 1).
+
+    Parameters
+    ----------
+        features: list of str
+            The list of feature types (genexp, gpa, snps) present in the training set that will be used to learn standardization parameters.
+            If 'genexp' is not in this list, the current instance of this object will leave input data completely unchanged.
+    '''
+    def __init__(self, features: list):
+        self.features = features
+
+    def fit(self, X, y = None):
+        '''
+        Compute the mean and std of genexp data to be used for later scaling.
+
+        Parameters
+        ----------
+            X: np.ndarray or scipy.sparse.csr_array
+                Data from which to compute mean and standard deviation of genexp data to use for later scaling.
+            y: None
+                Ignored (only for scikit-learn compatibility)
+        '''
+        if 'genexp' not in self.features:
+            return self
+        else:
+            #divide genexp data from others
+            genexp_data = X[:, :6026]
+
+            #compute mean and standard deviation
+            if isinstance(genexp_data, csr_array):
+                genexp_data = genexp_data.toarray()
+            self.mean = np.mean(genexp_data, axis = 0, dtype = np.float64)
+            self.std = np.std(genexp_data, axis = 0, dtype = np.float64)
+            return self
+            
+
+    def transform(self, X):
+        '''
+        Perform standardization on genexp data, by centering and scaling
+
+        Parameters
+        ----------
+            X: np.ndarray or scipy.sparse.csr_array
+                Matrix for which we want to standardize genexp data along the feature axis.
+        Returns
+        -------
+            X_transformed: np.ndarray or scipy.sparse.csr_array
+                Input array after the standardization of genexp data.
+        '''
+        if 'genexp' not in self.features:
+            return X
+        else:
+            #divide genexp data from others
+            genexp_data = X[:, :6026]
+            other_data = X[:, 6026:]
+
+            #subtract mean and divide by standard deviation
+            if isinstance(genexp_data, csr_array):
+                genexp_data = genexp_data.toarray()
+                genexp_data = (genexp_data - self.mean)/self.std
+                genexp_data = csr_array(genexp_data)
+                X = hstack([genexp_data, other_data], format = 'csr')
+            else:
+                genexp_data = (genexp_data - self.mean)/self.std
+                X = np.hstack([genexp_data, other_data])
+
+            return X
+
+
+def weighted_train_test_split(drug: str, features: list, test_size: float, random_state: int = None, full_Y: bool = False):
     '''
     Given a drug and one or more set of features (gene expression, gpa or snps), this function divides those features data 
     into train and test set, keeping in both sets the same proportion between susceptible and resistant to a certain drug.
-
-    If required, this function can also standardize gene expression data (they are already standardized, but before the division
-    between train and test sets, so train and test sets are not really independent). Gpa and snps data don't need to be standardized
-    because they are binary data (either 0 or 1).
 
     Parameters
     ----------
@@ -32,8 +105,6 @@ def weighted_train_test_split(drug: str, features: list, test_size: float, stand
             element in the list is not one of these three, the code raises a ValueError.
         test_size: float
             The percentage of dataset that will be used as test set.
-        standardize: bool (default: False)
-            If True, standardize gene expression data after the train-test division.
         random_state: int (default: None)
             Random seed for reproducibility.
         full_Y: bool (default: False)
@@ -68,8 +139,7 @@ def weighted_train_test_split(drug: str, features: list, test_size: float, stand
     Y_susceptible = classes[classes[drug] < 0.5]
     Y_resistant = classes[classes[drug] > 0.5]
 
-    #first split only the classes dataset, the input features will be splitted separately, so that gene expression data can be standardized
-    #after the division
+    #first split only the classes dataset, the input features will be splitted separately
     Y_train_s, Y_test_s = train_test_split(Y_susceptible, test_size = test_size, random_state = random_state)
     Y_train_r, Y_test_r = train_test_split(Y_resistant, test_size = test_size, random_state = random_state)
 
@@ -99,12 +169,6 @@ def weighted_train_test_split(drug: str, features: list, test_size: float, stand
         #divide into train and test, using the same division of the output classes
         new_features_train = new_features[train_indexes]
         new_features_test = new_features[test_indexes]
-
-        if standardize and feature == 'genexp':
-            new_features_train = scale(new_features_train.toarray()) #standardization cannot be done using sparse matrices
-            new_features_test = scale(new_features_test.toarray()) #so we convert into np.ndarray
-            new_features_train = csr_array(new_features_train)
-            new_features_test = csr_array(new_features_test)
         
         #append different features data together
         if i == 0:

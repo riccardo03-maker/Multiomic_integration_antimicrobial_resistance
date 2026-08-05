@@ -1,4 +1,4 @@
-from ml_functions import weighted_train_test_split, get_non_zero_features, create_list_of_all_features
+from ml_functions import weighted_train_test_split, get_non_zero_features, create_list_of_all_features, GenexpStandardizer
 import pytest
 from scipy.sparse import csr_array
 import pandas as pd
@@ -97,25 +97,31 @@ def test_correct_train_test_split_full_y():
 
 def test_correct_standardization():
     '''
-    Test the correct standardization of gene expression data, both in the train and test sets.
+    Test the correct standardization of gene expression data.
 
     GIVEN: input features relative to gene expression.
-    WHEN: I split data into train and test sets, with standardization of gene expression data after the splitting.
-    THEN: each feature of gene expression data has 0 mean and 1 standard deviation.
+    WHEN: I split data into train and test sets, and after the splitting I use the GenexpStandardizer to standardize genexp features.
+    THEN: after standardization, each gene expression feature has 0 mean and 1 standard deviation across all samples of the training 
+    set, while before standardization mean and std are different from 0 and 1.
     '''
-    X_train, X_test, _, _ = weighted_train_test_split(drug = 'Tob', features = ['genexp'], test_size = 0.2, standardize = True, random_state = 42)
+    X_train, _, _, _ = weighted_train_test_split(drug = 'Tob', features = ['genexp'], test_size = 0.2, random_state = 42)
+
+    #check mean is not 0 and std is not 1 at the beginning
+    train_mean = np.mean(X_train.toarray(), axis = 0)
+    train_std = np.std(X_train.toarray(), axis = 0)
+    assert(not (np.isclose(train_mean, 0., atol = 0.000001)).all())
+    assert(not (np.isclose(train_std, 1., atol = 0.000001)).all())
+
+    standardizer = GenexpStandardizer(features = ['genexp'])
+    standardizer.fit(X_train)
+    X_train = standardizer.transform(X_train)
     X_train = X_train.toarray()
-    X_test = X_test.toarray()
     
     train_mean = np.mean(X_train, axis = 0)
     train_std = np.std(X_train, axis = 0)
-    test_mean = np.mean(X_test, axis = 0)
-    test_std = np.std(X_test, axis = 0)
 
     assert((np.isclose(train_mean, 0., atol = 0.000001)).all())
-    assert((np.isclose(test_mean, 0., atol = 0.000001)).all())
     assert((np.isclose(train_std, 1., atol = 0.000001)).all())
-    assert((np.isclose(test_std, 1., atol = 0.000001)).all())
 
 
 def test_no_standardization_for_other_data():
@@ -127,12 +133,19 @@ def test_no_standardization_for_other_data():
     THEN: each feature of gpa has either the value 0 or 1 for each sample, meaning that data have not been standardized. 
     So train and test sets contain just two different values.
     '''
-    X_train, X_test, _, _ = weighted_train_test_split(drug = 'Tob', features = ['gpa'], test_size = 0.2, standardize = True, random_state = 42)
+    X_train, _, _, _ = weighted_train_test_split(drug = 'Tob', features = ['gpa'], test_size = 0.2, random_state = 42)
+    standardizer = GenexpStandardizer(features = ['gpa'])
+    standardizer.fit(X_train)
+    X_train = standardizer.transform(X_train)
     X_train = X_train.toarray()
-    X_test = X_test.toarray()
 
     assert(len(np.unique(X_train)) == 2)
-    assert(len(np.unique(X_test)) == 2)
+
+    #check mean and standard deviations are different from 0 and 1
+    train_mean = np.mean(X_train, axis = 0)
+    train_std = np.std(X_train, axis = 0)
+    assert(not (np.isclose(train_mean, 0., atol = 0.000001)).all())
+    assert(not (np.isclose(train_std, 1., atol = 0.000001)).all())
 
 
 # Testing list of all features with non zero coefficients in logistic regression

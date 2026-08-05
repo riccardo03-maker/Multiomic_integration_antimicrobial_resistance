@@ -6,11 +6,11 @@ from sklearn.metrics import precision_score, recall_score, accuracy_score
 from sklearn.svm import LinearSVC, SVC
 from sklearn.linear_model import LogisticRegression
 from sklearn.decomposition import PCA
-from sklearn.preprocessing import scale
 from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
 from sklearn.neighbors import KNeighborsClassifier
+from sklearn.pipeline import make_pipeline
 
-from .ml_functions.ml_functions import weighted_train_test_split, create_list_of_all_features
+from .ml_functions.ml_functions import weighted_train_test_split, create_list_of_all_features, GenexpStandardizer
 import numpy as np
 import pandas as pd
 from scipy.sparse import load_npz, csr_array
@@ -49,9 +49,6 @@ def pca():
         for feature in ['genexp', 'gpa', 'snps']:
             features = load_npz("./transformed_data/features/" + feature + "_features.npz")
             features = features[indexes_to_keep]
-            if feature == 'genexp': #standardize
-                features = scale(features.toarray()) #standardization cannot be done using sparse matrices, so we convert into np.ndarray
-                features = csr_array(features)
 
             pca = PCA(n_components = 2, random_state = 42)
             pca.fit(features)
@@ -88,9 +85,14 @@ def cross_validate_model(model_name: str, **kwargs):
     times, and at the end the score assigned to a certain combination of features for a certain drug is given by the mean of the 25
     scores obtained in this way.
 
+    The machine learning pipeline is always composed by a standardization of genexp features, followed by the machine learning algorithm
+    chosen as input. The standardization is performed by subtracting to each feature of each sample the mean value of that feature, and
+    dividing the result by the standard deviation of that feature. The mean and standard deviation parameters are learnt during model
+    training (so they are calculated on four of the five folds during each iteration of the cross-validation loop).
+
     The cross-validation scores are calculated using the f1 macro score.
 
-    The hyperparameters of the selected model are not optimized using cross-validation, but they can be given as input instead.
+    The hyperparameters of the selected algorithm are not optimized using cross-validation, but they can be given as input instead.
 
     The classification performances obtained for each drug and each combination of features are saved in a csv file.
 
@@ -108,7 +110,7 @@ def cross_validate_model(model_name: str, **kwargs):
     for i, drug in enumerate(drugs):
         for j, features in enumerate(all_combinations_of_features):
     
-            X_train, X_test, Y_train, Y_test = weighted_train_test_split(drug = drug, features = features, test_size = 0.2, random_state  = 42)
+            X_train, _, Y_train, _ = weighted_train_test_split(drug = drug, features = features, test_size = 0.2, random_state  = 42)
             #use a seed for random train-test splitting, so that for both this function and the model_performance_test function
             #the samples used for training and testing are always the same for the same drug
 
@@ -116,7 +118,7 @@ def cross_validate_model(model_name: str, **kwargs):
                 X_train = X_train.toarray()
             #linear discriminant analysis does not work on sparse data
     
-            model = ml_models[model_name](**kwargs)
+            model = make_pipeline(GenexpStandardizer(features = features), ml_models[model_name](**kwargs))
             cv_scores = np.array([], dtype = np.float64)
     
             for k in range(5):
@@ -151,6 +153,11 @@ def model_performance_test(model_name: str, **kwargs):
     The selected machine learning model is then trained on the full training set, and its classification performances evaluated on the test
     set. Performances are evaluated through five scores: precision (for both susceptible and resistant classes), recall (again for both
     classes), and accuracy of classification.
+
+    The machine learning pipeline is always composed by a standardization of genexp features, followed by the machine learning algorithm
+    chosen as input. The standardization is performed by subtracting to each feature of each sample the mean value of that feature, and
+    dividing the result by the standard deviation of that feature. The mean and standard deviation parameters are learnt during model
+    training (so they are calculated on the training set).
 
     All the scores are saved in a csv file.
 
@@ -187,7 +194,7 @@ def model_performance_test(model_name: str, **kwargs):
             X_test = X_test.toarray()
             #linear discriminant analysis does not work on sparse data
             
-        model = ml_models[model_name](**kwargs)
+        model = make_pipeline(GenexpStandardizer(features = best_combination_of_features), ml_models[model_name](**kwargs))
         model.fit(X_train, Y_train)            
         Y_predict = model.predict(X_test)
 
