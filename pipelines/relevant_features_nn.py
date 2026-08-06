@@ -9,7 +9,7 @@ from sklearn.metrics import precision_score, recall_score, accuracy_score
 import numpy as np
 import pandas as pd
 
-from .ml_functions.ml_functions import weighted_train_test_split, get_non_zero_features, create_list_of_all_features
+from .ml_functions.ml_functions import weighted_train_test_split, get_non_zero_features, create_list_of_all_features, GenexpStandardizer
 from .neural_networks import train_loop, evaluate
 
 __author__=['Riccardo Grandicelli']
@@ -122,7 +122,14 @@ def train_relevant_features_nn(features: list, drug: str, architecture: str):
     '''
     Train a neural network with the chosen architecture, using as input the relevant features of the selected type (those with a
     coefficient different from 0 in the logistic regression with Lasso regularization) and as output the susceptibility and resistance
-    to the selected drug. The weights of the model are then saved, ready to use for a future testing of the model performances.
+    to the selected drug.
+
+    The full dataset for the selected drug and with the selected features is splitted into a training and a test set (containing
+    respectively 80% and 20% of samples chosen preserving classes proportions). Then, genexp features (if present) are standardized
+    using mean and standard deviation computed on the full training set. After that, all features that have a coefficient equal to zero
+    in the logistic regression with L1 regularization are discarded. Finally, the parameters of the neural network with the chosen
+    architecture are optimized on the training set with the remaining features, and saved in a specific file, together with a csv file
+    showing the value of the loss function across epochs.
     
     The training is performed using a cross-entropy loss function and an Adam optimizer. The learning rate is 0.001.
     
@@ -135,6 +142,12 @@ def train_relevant_features_nn(features: list, drug: str, architecture: str):
         architecture: {'early_fusion', 'intermediate_fusion', 'late_fusion'}
             The type of neural network that is going to be trained.
     '''
+    #set seed for reproducibility
+    torch.manual_seed(42)
+
+    #create dataframe for loss function during epochs
+    loss_evolution = pd.DataFrame(columns = ['Epoch', 'Loss'])
+
     number_of_features = [] #list with the number of features for each type
     all_coefficients_dataset = pd.read_csv("pipelines/results/log_reg_coefficients.csv")
 
@@ -144,25 +157,26 @@ def train_relevant_features_nn(features: list, drug: str, architecture: str):
         relevant_features_indexes = [i for i, feat in enumerate(all_features) if feat in relevant_features]
         #get the positions of the relevant features in the list of all the features of a certain type
 
-        X_train_feat, X_test_feat, Y_train, Y_test = weighted_train_test_split(drug = drug, features = [feature], test_size = 0.2, 
-                                                                                    standardize = True, random_state = 42)
+        X_train_feat, _, Y_train, _ = weighted_train_test_split(drug = drug, features = [feature], test_size = 0.2, 
+                                                                                random_state = 42)
+
+        #standardize genexp features
+        standardizer = GenexpStandardizer(features = [feature])
+        standardizer.fit(X_train_feat)
+        X_train_feat = standardizer.transform(X_train_feat)
+
         X_train_feat = X_train_feat.toarray()[:, relevant_features_indexes]
-        X_test_feat = X_test_feat.toarray()[:, relevant_features_indexes]
         number_of_features.append(len(relevant_features_indexes))
 
         #concatenate different features into a unique array
         if k == 0:
             X_train = X_train_feat
-            X_test = X_test_feat
         else:
             X_train = np.concatenate((X_train, X_train_feat), axis = 1)
-            X_test = np.concatenate((X_test, X_test_feat), axis = 1)
 
     #transform data into torch tensors
     X_train = torch.tensor(X_train, dtype = torch.float32)
-    X_test = torch.tensor(X_test, dtype = torch.float32)
     Y_train = torch.tensor(Y_train, dtype = torch.long)
-    Y_test = torch.tensor(Y_test, dtype = torch.long)
         
     model = neural_networks[architecture](number_of_features = number_of_features)
     train_data = TensorDataset(X_train, Y_train)
@@ -175,7 +189,8 @@ def train_relevant_features_nn(features: list, drug: str, architecture: str):
     #train the model
     for i in range(epochs):
         loss = train_loop(dataloader, model, loss_fn, optimizer)
-        print("Epoch: " + str(i+1) + ", loss: " + str(loss))
+        loss_evolution.loc[len(loss_evolution)] = [i+1, loss.item()]
+        print("Epoch: " + str(i+1) + ", loss: " + str(loss.item()))
     
     #save the trained model
     filename = 'rf_'
@@ -184,6 +199,7 @@ def train_relevant_features_nn(features: list, drug: str, architecture: str):
         filename += '_'
     filename += drug
     torch.save(model.state_dict(), "pipelines/nn_trained_models/" + architecture + "_rf/" + architecture + "_" + filename)
+    loss_evolution.to_csv("pipelines/nn_trained_models/" + architecture + "/loss_function/" + architecture + "_" + filename + ".csv")
     
         
 def nn_relevant_features_test(architecture: str):
@@ -192,8 +208,11 @@ def nn_relevant_features_test(architecture: str):
     logistic regression with Lasso regularization.
     
     The performance of the chosen architecture of neural network is tested for each drug and each combination of features, using the
-    20% of samples that were kept in the test set and were not used for the training of the model. The performance is evaluated through
-    five scores: precision of susceptible and resistant classes, recall of susceptible and resistant classes, and accuracy of classification.
+    20% of samples that were kept in the test set and were not used for the training of the model. If present, genexp data of the test
+    set are standardized using mean and standard deviation learnt on the training set.
+    
+    The performance is evaluated through five scores: precision of susceptible and resistant classes, recall of susceptible and
+    resistant classes, and accuracy of classification.
     
     Parameters
     ----------
@@ -217,7 +236,15 @@ def nn_relevant_features_test(architecture: str):
                 #get the positions of the relevant features in the list of all the features of a certain type
             
                 X_train_feat, X_test_feat, Y_train, Y_test = weighted_train_test_split(drug = drug, features = [feature], test_size = 0.2, 
-                                                                                            standardize = True, random_state = 42)
+                                                                                        random_state = 42)
+
+                #standardize genexp features for both training and test sets, using always mean and standard deviation estimated 
+                # on the full training set
+                standardizer = GenexpStandardizer(features = [feature])
+                standardizer.fit(X_train_feat)
+                X_train_feat = standardizer.transform(X_train_feat)
+                X_test_feat = standardizer.transform(X_test_feat)
+                
                 X_train_feat = X_train_feat.toarray()[:, relevant_features_indexes]
                 X_test_feat = X_test_feat.toarray()[:, relevant_features_indexes]
                 number_of_features.append(len(relevant_features_indexes))
@@ -282,7 +309,15 @@ def late_fusion_relevant_features_test():
                 #get the positions of the relevant features in the list of all the features of a certain type
                 
                 X_train_feat, X_test_feat, Y_train, Y_test = weighted_train_test_split(drug = drug, features = [feature], test_size = 0.2, 
-                                                                                                standardize = True, random_state = 42)
+                                                                                        random_state = 42)
+
+                #standardize genexp features for both training and test sets, using always mean and standard deviation estimated 
+                # on the full training set
+                standardizer = GenexpStandardizer(features = [feature])
+                standardizer.fit(X_train_feat)
+                X_train_feat = standardizer.transform(X_train_feat)
+                X_test_feat = standardizer.transform(X_test_feat)
+                
                 X_train_feat = X_train_feat.toarray()[:, relevant_features_indexes]
                 X_test_feat = X_test_feat.toarray()[:, relevant_features_indexes]
                 number_of_features.append(len(relevant_features_indexes))

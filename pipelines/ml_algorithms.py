@@ -212,8 +212,9 @@ def get_logistic_regression_coefficients():
     Implement a logistic regression with Lasso regularization, and get the coefficients of all the features.
 
     For each drug and for each type of feature (genexp, gpa and snps), the full dataset of input features is split into a training 
-    and a test set. Then, the model is trained on the whole train set, and all the coefficients of the features are saved in a csv
-    file.
+    and a test set. Then, the model is trained on the whole training set, and all the coefficients of the features are saved in a csv
+    file. The model includes both a standardization of genexp features by subtracting the mean and dividing by the standard deviation,
+    followed by a logistic regression with L1 regularization.
 
     Each row of the dataset stored in the csv file corresponds to a drug, and each column to a feature. The entries represent the coefficient
     of a feature in the logistic regression fitted using as input all the features of the type to which that feature belongs.
@@ -228,12 +229,14 @@ def get_logistic_regression_coefficients():
     for drug in drugs:
         coefficients_array = np.array([[]])
         for feature in ['genexp', 'gpa', 'snps']: 
-            X_train, X_test, Y_train, Y_test = weighted_train_test_split(drug = drug, features = [feature], test_size = 0.2, standardize = True,
-                                                                               random_state  = 42)
-            log_reg = LogisticRegression(C = 0.1, l1_ratio = 1.0, tol = 1e-6, solver = 'liblinear', class_weight = 'balanced',
-                                         random_state = 42)
+            X_train, _, Y_train, _ = weighted_train_test_split(drug = drug, features = [feature], test_size = 0.2, random_state  = 42)
+            standardizer = GenexpStandardizer(features = [feature])
+            log_reg = LogisticRegression(C = 0.1, l1_ratio = 1.0, tol = 1e-6, solver = 'liblinear',
+                                     class_weight = 'balanced', random_state = 42)
             #l1_ratio 1 is the l1 regularization
 
+            standardizer.fit(X_train)
+            X_train = standardizer.transform(X_train)
             log_reg.fit(X_train, Y_train)
 
             coefficients_array = np.concatenate((coefficients_array, log_reg.coef_), axis = 1)

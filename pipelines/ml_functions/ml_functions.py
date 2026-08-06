@@ -48,7 +48,6 @@ class GenexpStandardizer():
         else:
             #divide genexp data from others
             genexp_data = X[:, :6026]
-
             #compute mean and standard deviation
             if isinstance(genexp_data, csr_array):
                 genexp_data = genexp_data.toarray()
