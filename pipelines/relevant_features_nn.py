@@ -199,7 +199,7 @@ def train_relevant_features_nn(features: list, drug: str, architecture: str):
         filename += '_'
     filename += drug
     torch.save(model.state_dict(), "pipelines/nn_trained_models/" + architecture + "_rf/" + architecture + "_" + filename)
-    loss_evolution.to_csv("pipelines/nn_trained_models/" + architecture + "/loss_function/" + architecture + "_" + filename + ".csv")
+    loss_evolution.to_csv("pipelines/nn_trained_models/" + architecture + "_rf/loss_function/" + architecture + "_" + filename + ".csv")
     
         
 def nn_relevant_features_test(architecture: str):
