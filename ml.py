@@ -6,6 +6,7 @@ import subprocess
 from pipelines import ml_algorithms
 from pipelines import neural_networks
 from pipelines import relevant_features_nn
+import numpy as np
 
 __author__=['Riccardo Grandicelli']
 __email__=['riccardograndicelli03@gmail.com']
@@ -50,6 +51,19 @@ if(__name__ == '__main__'):
         help = '''Computes the cross-validation score together with the score on the test set.
         If the --algorithm option is not provided or it is equal to 'early_fusion', 'intermediate_fusion', 'late_fusion' or 'pca', this option is ignored.
         '''
+    )
+
+    parser.add_argument(
+        '--sweep', '-s',
+        dest = 'sweep',
+        required = False,
+        action = 'store',
+        default = None,
+        help = '''Implement a sweep among 20 possible values of the chosen parameter for the algorithm specifiec in the --algorithm option.
+                The sweep is made only for Ceftazidim drug resistance, and using all three types of features.
+                If the --algorithm option is not provided, or it is equal to an algorithm that does not have the chosen parameter, this option is ignored.
+        ''',
+        choices = ['C', 'gamma']
     )
 
     parser.add_argument(
@@ -135,11 +149,16 @@ if(__name__ == '__main__'):
 
 
     if args.algorithm == 'log_reg':
-        if args.cross:
-            ml_algorithms.cross_validate_model(model_name = 'log_reg', C = 0.1, l1_ratio = 1.0, tol = 1e-6, solver = 'liblinear', 
+        if args.sweep == 'C':
+            ml_algorithms.sweep_hyperparameter_C(model_name = 'log_reg', features = ['genexp', 'gpa', 'snps'], drug = 'Cef',
+                                                 C = np.logspace(-4, 3, num = 20), l1_ratio = 1.0, tol = 1e-6, solver = 'liblinear', 
+                                                class_weight = 'balanced', random_state = 42)
+        else:
+            if args.cross:
+                ml_algorithms.cross_validate_model(model_name = 'log_reg', C = 0.1, l1_ratio = 1.0, tol = 1e-6, solver = 'liblinear', 
                                              class_weight = 'balanced', random_state = 42)
-        ml_algorithms.model_performance_test(model_name = 'log_reg', C = 0.1, l1_ratio = 1.0, tol = 1e-6, solver = 'liblinear', 
-                                             class_weight = 'balanced', random_state = 42)
+            ml_algorithms.model_performance_test(model_name = 'log_reg', C = 0.1, l1_ratio = 1.0, tol = 1e-6, solver = 'liblinear', 
+                                                class_weight = 'balanced', random_state = 42)
         
     elif args.algorithm == 'knn':
         if args.cross:
@@ -152,18 +171,33 @@ if(__name__ == '__main__'):
         ml_algorithms.model_performance_test(model_name = 'lda', solver = 'svd')
 
     elif args.algorithm == 'svc':
-        if args.cross:
-            ml_algorithms.cross_validate_model(model_name = 'svc', C = 0.1, kernel = args.kernel, tol = 1e-6, 
+        if args.sweep == 'C':
+            ml_algorithms.sweep_hyperparameter_C(model_name = 'svc', features = ['genexp', 'gpa', 'snps'], drug = 'Cef',
+                                                C = np.logspace(-4, 3, num = 20), kernel = args.kernel, tol = 1e-6, 
                                                gamma = 1., degree = 3, class_weight = 'balanced')
-        ml_algorithms.model_performance_test(model_name = 'svc', C = 0.1, kernel = args.kernel, tol = 1e-6, 
+        elif args.sweep == 'gamma' and args.kernel != 'linear':
+            ml_algorithms.sweep_hyperparameter_gamma(kernel = args.kernel, features = ['genexp', 'gpa', 'snps'], drug = 'Cef',
+                                                gamma = np.logspace(-4, 4, num = 20), C = 0.1, tol = 1e-6, degree = 3, 
+                                                class_weight = 'balanced')            
+        else:
+            if args.cross:
+                ml_algorithms.cross_validate_model(model_name = 'svc', C = 0.1, kernel = args.kernel, tol = 1e-6, 
+                                               gamma = 1., degree = 3, class_weight = 'balanced')
+            ml_algorithms.model_performance_test(model_name = 'svc', C = 0.1, kernel = args.kernel, tol = 1e-6, 
                                                gamma = 1., degree = 3, class_weight = 'balanced')
         
     elif args.algorithm == 'svc_l1':
-        if args.cross:
-            ml_algorithms.cross_validate_model(model_name = 'svm_paper', penalty = 'l1', loss = 'squared_hinge', max_iter = 1000000, 
-                                               tol = 0.000001, class_weight = "balanced", dual = False, C = 0.1, random_state = 42)
-        ml_algorithms.model_performance_test(model_name = 'svm_paper', penalty = 'l1', loss = 'squared_hinge', max_iter = 1000000, 
-                                               tol = 0.000001, class_weight = "balanced", dual = False, C = 0.1, random_state = 42)
+        if args.sweep == 'C':
+            ml_algorithms.sweep_hyperparameter_C(model_name = 'svm_paper', features = ['genexp', 'gpa', 'snps'], drug = 'Cef',
+                                                 C = np.logspace(-4, 3, num = 20), penalty = 'l1', loss = 'squared_hinge', 
+                                                 max_iter = 1000000, tol = 0.000001, class_weight = "balanced", dual = False, 
+                                                 random_state = 42)
+        else:
+            if args.cross:
+                ml_algorithms.cross_validate_model(model_name = 'svm_paper', penalty = 'l1', loss = 'squared_hinge', max_iter = 1000000, 
+                                                tol = 0.000001, class_weight = "balanced", dual = False, C = 0.1, random_state = 42)
+            ml_algorithms.model_performance_test(model_name = 'svm_paper', penalty = 'l1', loss = 'squared_hinge', max_iter = 1000000, 
+                                                tol = 0.000001, class_weight = "balanced", dual = False, C = 0.1, random_state = 42)
     
     elif args.algorithm == 'early_fusion':
         if args.rf:

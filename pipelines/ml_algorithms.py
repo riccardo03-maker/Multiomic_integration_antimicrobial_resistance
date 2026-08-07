@@ -244,3 +244,121 @@ def get_logistic_regression_coefficients():
         coefficients.loc[len(coefficients)] = coefficients_array[0] #use [0] because coefficients are stored as a column vectors
 
     coefficients.to_csv("pipelines/results/log_reg_coefficients.csv")
+
+
+def sweep_hyperparameter_C(model_name: str, features: list, drug: str, C: list = None, **kwargs):
+    '''
+    Implement a machine learning pipeline, sweeping the value of the hyperparameter C to find the best hyperparameter.
+
+    For the drug given as input, all samples that are not classified for that drug are discarded. Then, the full dataset is splitted
+    into a training and a test set containing respectively 80% and 20% of the samples, with the same proportion of susceptible and
+    resistant samples in both sets. After that, for each value of C the machine learning pipeline performances are tested first in a
+    5-fold cross-validation on the training set, then the pipeline is trained on the full training set and its 
+    performances evaluated on the test set.
+    
+    The machine learning pipeline is always composed by a standardization of genexp data (if present among the chosen features) 
+    followed by the machine learning model given as input.
+
+    The score used for evaluation of performances in cross-validation is the f1-macro (the mean of the f1-macro scores obtained
+    during the 5 iterations of the cross-validation loop), while classification performances on the test set are evaluated using 
+    the accuracy score.
+
+    All scores are saved in a csv file.
+
+    Parameters
+    ----------
+        model_name: {'svc', 'log_reg', 'svm_paper'}
+            The machine learning model whose performances are going to be tested. 'svm_paper' corresponds to the support vector 
+            classification implemented in the paper from which data are taken. K-Nearest Neighbours and Linear Discriminant Analysis
+            cannot be chosen because they don't have a hyperparameter C.
+        features: list of str
+            The input features to use for resistance prediction.
+        drug: {'Cef', 'Cip', 'Mer', 'Tob'}
+            The drug for which the machine learning model has to predict susceptibility or resistance.
+        C: list of numeric
+            The values of the hyperparameter C to sweep.
+        **kwargs:
+            Optional parameters for the machine learning model selected.
+    '''
+    result_table = pd.DataFrame(columns = ['C', 'Cv_score', 'Test_score'])
+    X_train, X_test, Y_train, Y_test = weighted_train_test_split(drug = drug, features = features, 
+                                                                test_size = 0.2, random_state  = 42)
+
+    for value in C:
+        #perform 5-fold cross-validation        
+        model = make_pipeline(GenexpStandardizer(features = features), ml_models[model_name](C = value, **kwargs))
+        cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
+        single_iteration_scores = cross_val_score(model, X=X_train, y=Y_train, cv=cv, scoring = 'f1_macro', n_jobs = 1)
+        cv_score = np.mean(single_iteration_scores)
+
+        #reload the model, train it on the full training set and test performances on the test set
+        model = make_pipeline(GenexpStandardizer(features = features), ml_models[model_name](C = value, **kwargs))
+        model.fit(X_train, Y_train)            
+        Y_predict = model.predict(X_test)
+
+        result_table.loc[len(result_table)] = [value, cv_score, accuracy_score(Y_test, Y_predict)]
+        print("Iteration")
+
+    if model_name == 'svc':
+        model_name = model_name + '_' + kwargs['kernel']
+        #include also the kernel in the final output file name for support vector classification
+
+    result_table.to_csv("./pipelines/results/ml_algorithms/sweep/" + model_name + "_sweep_C_scores.csv")
+
+
+def sweep_hyperparameter_gamma(kernel: str, features: list, drug: str, gamma: list = None, **kwargs):
+    '''
+    Implement a support vector classification pipeline, sweeping the value of the hyperparameter gamma to find the best hyperparameter.
+
+    For the drug given as input, all samples that are not classified for that drug are discarded. Then, the full dataset is splitted
+    into a training and a test set containing respectively 80% and 20% of the samples, with the same proportion of susceptible and
+    resistant samples in both sets. After that, for each value of gamma the machine learning pipeline performances are tested first in a
+    5-fold cross-validation on the training set, then the pipeline is trained on the full training set and its 
+    performances evaluated on the test set.
+    
+    The machine learning pipeline is always composed by a standardization of genexp data (if present among the chosen features) 
+    followed by a support vector classification algorithm with the kernel given as input.
+
+    The score used for evaluation of performances in cross-validation is the f1-macro (the mean of the f1-macro scores obtained
+    during the 5 iterations of the cross-validation loop), while classification performances on the test set are evaluated using 
+    the accuracy score.
+
+    All scores are saved in a csv file.
+
+    Parameters
+    ----------
+        kernel: {'poly', 'sigmoid', 'rbf'}
+            The nonlinear kernel of the support vector classification algorithm. Linear kernel is not supported for this function because
+            there is no parameter gamma.
+        features: list of str
+            The input features to use for resistance prediction.
+        drug: {'Cef', 'Cip', 'Mer', 'Tob'}
+            The drug for which the machine learning model has to predict susceptibility or resistance.
+        gamma: list of numeric
+            The values of the hyperparameter gamma to sweep.
+        **kwargs:
+            Optional parameters for the support vector classification model.
+    '''    
+    result_table = pd.DataFrame(columns = ['Gamma', 'Cv_score', 'Test_score'])
+    X_train, X_test, Y_train, Y_test = weighted_train_test_split(drug = drug, features = features, 
+                                                                test_size = 0.2, random_state  = 42)
+
+    for value in gamma:
+        #perform 5-fold cross-validation        
+        model = make_pipeline(GenexpStandardizer(features = features), SVC(gamma = value, kernel = kernel, **kwargs))
+        cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
+        single_iteration_scores = cross_val_score(model, X=X_train, y=Y_train, cv=cv, scoring = 'f1_macro', n_jobs = 1)
+        cv_score = np.mean(single_iteration_scores)
+
+        #reload the model, train it on the full training set and test performances on the test set
+        model = make_pipeline(GenexpStandardizer(features = features), SVC(gamma = value, kernel = kernel, **kwargs))
+        model.fit(X_train, Y_train)            
+        Y_predict = model.predict(X_test)
+
+        result_table.loc[len(result_table)] = [value, cv_score, accuracy_score(Y_test, Y_predict)]
+        print("Iteration")
+
+    model_name = 'svc' + '_' + kernel
+    #include also the kernel in the final output file name for support vector classification
+
+    result_table.to_csv("./pipelines/results/ml_algorithms/sweep/" + model_name + "_sweep_gamma_scores.csv")
