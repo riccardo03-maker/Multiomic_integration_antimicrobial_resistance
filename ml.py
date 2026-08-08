@@ -94,10 +94,10 @@ if(__name__ == '__main__'):
         required = False,
         action = 'store',
         default = None,
-        help = '''The number of the figure in the 'plots' folder to re-create using the ggplot2 library of R. Figures 3 and 6 cannot be re-created (since these figures have not been done with ggplot2).
-        For figures 2, 4 and 7, only the single plots are created. The complete figures were built from the single plots using an image editor, and therefore they cannot be re-created using ggplot2.
+        help = '''The number of the figure in the 'plots' folder to re-create using the ggplot2 library of R. Figures 3 and 8 cannot be re-created (since these figures have not been done with ggplot2).
+        For figures 2, 4, 5, 9 and 10, only the single plots are created. The complete figures were built from the single plots using an image editor, and therefore they cannot be re-created using ggplot2.
         ''',
-        choices = ['1', '2', '4', '5', '7']
+        choices = ['1', '2', '4', '5', '6', '7', '9', '10']
     )
 
     parser.add_argument(
@@ -255,8 +255,14 @@ if(__name__ == '__main__'):
         subprocess.run(["Rscript", "R_scripts/figure_4.R"])
     elif args.plot == '5':
         subprocess.run(["Rscript", "R_scripts/figure_5.R"])
+    elif args.plot == '6':
+        subprocess.run(["Rscript", "R_scripts/figure_6.R"])
     elif args.plot == '7':
         subprocess.run(["Rscript", "R_scripts/figure_7.R"])
+    elif args.plot == '9':
+        subprocess.run(["Rscript", "R_scripts/figure_9.R"])
+    elif args.plot == '10':
+        subprocess.run(["Rscript", "R_scripts/figure_10.R"])
 
 
     if args.download:

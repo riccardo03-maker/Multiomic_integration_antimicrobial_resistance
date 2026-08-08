@@ -115,12 +115,14 @@ This downloads the trained models for all the possible neural network architectu
 
 ### Plots
 
-The `--plot` option allows the re-creation of figures 1, 2, 4, 5 and 7 in the [`plots`](https://github.com/riccardo03-maker/Multiomic_integration_antimicrobial_resistance/tree/main/plots) folder, using the `ggplot2` library of R.
+The `--plot` option allows the re-creation of figures 1, 2, 4, 5, 6, 7, 9 and 10 in the [`plots`](https://github.com/riccardo03-maker/Multiomic_integration_antimicrobial_resistance/tree/main/plots) folder, using the `ggplot2` library of R.
+
+To re-create plot 9, you first need to train or download neural network models, as described in the [Algorithm](#algorithm) section.
 
 ### Erase
 
 The `--erase` option removes all the files that can be created using this command line application. These files are:
-* All the plots, except for figure 3 and 6, and the complete figures 2, 4 and 7
+* All the plots, except for figure 3 and 6, and the complete figures 2, 4, 5, 9 and 10
 * The cross-validation and test scores, for both classical machine learning algorithms and neural networks
 * The table with the coefficients of features in logistic regression
 * The tables with pca results

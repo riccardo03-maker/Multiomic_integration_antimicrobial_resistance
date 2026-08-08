@@ -1,108 +1,63 @@
 library(tidyverse)
 
-#load test scores of classical machine learning algorithms and create a column with the machine learning algorithm used
-knn_scores <- read_csv(
-    "pipelines/results/ml_algorithms/knn/knn_test_scores.csv"
+#load data
+sweep_log_reg <- read_csv(
+    "pipelines/results/ml_algorithms/sweep/log_reg_sweep_C_scores.csv"
 )
-knn_scores <- knn_scores %>%
-    mutate("algorithm" = "KNN")
-
-lda_scores <- read_csv(
-    "pipelines/results/ml_algorithms/lda/lda_test_scores.csv"
+sweep_svm_paper <- read_csv(
+    "pipelines/results/ml_algorithms/sweep/svm_paper_sweep_C_scores.csv"
 )
-lda_scores <- lda_scores %>%
-    mutate("algorithm" = "LDA")
-
-svc_linear_scores <- read_csv(
-    "pipelines/results/ml_algorithms/svc_linear/svc_linear_test_scores.csv"
+sweep_svc_linear <- read_csv(
+    "pipelines/results/ml_algorithms/sweep/svc_linear_sweep_C_scores.csv"
 )
-svc_linear_scores <- svc_linear_scores %>%
-    mutate("algorithm" = "SVC_linear")
-
-svc_poly_scores <- read_csv(
-    "pipelines/results/ml_algorithms/svc_poly/svc_poly_test_scores.csv"
+sweep_svc_poly <- read_csv(
+    "pipelines/results/ml_algorithms/sweep/svc_poly_sweep_C_scores.csv"
 )
-svc_poly_scores <- svc_poly_scores %>%
-    mutate("algorithm" = "SVC_poly")
-
-svc_rbf_scores <- read_csv(
-    "pipelines/results/ml_algorithms/svc_rbf/svc_rbf_test_scores.csv"
+sweep_svc_sigmoid <- read_csv(
+    "pipelines/results/ml_algorithms/sweep/svc_sigmoid_sweep_C_scores.csv"
 )
-svc_rbf_scores <- svc_rbf_scores %>%
-    mutate("algorithm" = "SVC_gaussian")
-
-svc_sigmoid_scores <- read_csv(
-    "pipelines/results/ml_algorithms/svc_sigmoid/svc_sigmoid_test_scores.csv"
+sweep_svc_rbf <- read_csv(
+    "pipelines/results/ml_algorithms/sweep/svc_rbf_sweep_C_scores.csv"
 )
-svc_sigmoid_scores <- svc_sigmoid_scores %>%
-    mutate("algorithm" = "SVC_sigmoidal")
 
-log_reg_scores <- read_csv(
-    "pipelines/results/ml_algorithms/log_reg/log_reg_test_scores.csv"
-)
-log_reg_scores <- log_reg_scores %>%
-    mutate("algorithm" = "Logistic_regression")
+#plot cross validation scores
+plot <- ggplot() +
+    scale_color_manual(values = c("Logistic Regression" = "#4e79a7", "SVC paper" = "#f28e2b", "SVC linear" = "#59a14f", 
+                        "SVC poly" = "#e15759", "SVC sigmoidal" = "#b07aa1", "SVC Gaussian"="#edc948")) +
+    geom_line(data = sweep_log_reg, aes(x = log10(C), y = Cv_score, color = "Logistic Regression"), linewidth = 1, ) +
+    geom_point(data = sweep_log_reg, aes(x = log10(C), y = Cv_score, color = "Logistic Regression"), size = 3) +
+    geom_line(data = sweep_svm_paper, aes(x = log10(C), y = Cv_score, color = "SVC paper"), linewidth = 1) +
+    geom_point(data = sweep_svm_paper, aes(x = log10(C), y = Cv_score, color = "SVC paper"), size = 3) +
+    geom_line(data = sweep_svc_linear, aes(x = log10(C), y = Cv_score, color = "SVC linear"), linewidth = 1) +
+    geom_point(data = sweep_svc_linear, aes(x = log10(C), y = Cv_score, color = "SVC linear"), size = 3) +
+    geom_line(data = sweep_svc_poly, aes(x = log10(C), y = Cv_score, color = "SVC poly"), linewidth = 1) +
+    geom_point(data = sweep_svc_poly, aes(x = log10(C), y = Cv_score, color = "SVC poly"), size = 3) +
+    geom_line(data = sweep_svc_sigmoid, aes(x = log10(C), y = Cv_score, color = "SVC sigmoidal"), linewidth = 1) +
+    geom_point(data = sweep_svc_sigmoid, aes(x = log10(C), y = Cv_score, color = "SVC sigmoidal"), size = 3) +
+    geom_line(data = sweep_svc_rbf, aes(x = log10(C), y = Cv_score, color = "SVC Gaussian"), linewidth = 1) +
+    geom_point(data = sweep_svc_rbf, aes(x = log10(C), y = Cv_score, color = "SVC Gaussian"), size = 3) +
+    labs(title = "Cross validation scores all features Ceftazidim", x = "C (log10)", y = "F1 macro score", color = "Algorithm") +
+    theme_bw()
 
-svm_paper_scores <- read_csv(
-    "pipelines/results/ml_algorithms/svm_paper/svm_paper_test_scores.csv"
-)
-svm_paper_scores <- svm_paper_scores %>%
-    mutate("algorithm" = "SVC_paper")
+ggsave("plots/figure_4/sweep_crossval_scores.png", plot = plot, width = 6.67, height = 6.67)
 
+#plot scores on test set
+plot <- ggplot() +
+    scale_color_manual(values = c("Logistic Regression" = "#4e79a7", "SVC paper" = "#f28e2b", "SVC linear" = "#59a14f", 
+                        "SVC poly" = "#e15759", "SVC sigmoidal" = "#b07aa1", "SVC Gaussian"="#edc948")) +
+    geom_line(data = sweep_log_reg, aes(x = log10(C), y = Test_score, color = "Logistic Regression"), linewidth = 1) +
+    geom_point(data = sweep_log_reg, aes(x = log10(C), y = Test_score, color = "Logistic Regression"), size = 3) +
+    geom_line(data = sweep_svm_paper, aes(x = log10(C), y = Test_score, color = "SVC paper"), linewidth = 1) +
+    geom_point(data = sweep_svm_paper, aes(x = log10(C), y = Test_score, color = "SVC paper"), size = 3) +
+    geom_line(data = sweep_svc_linear, aes(x = log10(C), y = Test_score, color = "SVC linear"), linewidth = 1) +
+    geom_point(data = sweep_svc_linear, aes(x = log10(C), y = Test_score, color = "SVC linear"), size = 3) +
+    geom_line(data = sweep_svc_poly, aes(x = log10(C), y = Test_score, color = "SVC poly"), linewidth = 1) +
+    geom_point(data = sweep_svc_poly, aes(x = log10(C), y = Test_score, color = "SVC poly"), size = 3) +
+    geom_line(data = sweep_svc_sigmoid, aes(x = log10(C), y = Test_score, color = "SVC sigmoidal"), linewidth = 1) +
+    geom_point(data = sweep_svc_sigmoid, aes(x = log10(C), y = Test_score, color = "SVC sigmoidal"), size = 3) +
+    geom_line(data = sweep_svc_rbf, aes(x = log10(C), y = Test_score, color = "SVC Gaussian"), linewidth = 1) +
+    geom_point(data = sweep_svc_rbf, aes(x = log10(C), y = Test_score, color = "SVC Gaussian"), size = 3) +
+    labs(title = "Test scores all features Ceftazidim", x = "C (log10)", y = "Accuracy score", color = "Algorithm") +
+    theme_bw()
 
-#unify all datasets into a single one
-all_scores <- bind_rows(knn_scores, lda_scores, svc_linear_scores, svc_poly_scores, svc_rbf_scores, 
-                        svc_sigmoid_scores, log_reg_scores, svm_paper_scores)
-
-
-#create a plot of scores for each drug
-cef_scores <- all_scores %>%
-    filter(drug == 'Cef')
-
-cef_plot <- ggplot(data = cef_scores, aes(x = algorithm, y = accuracy, fill = features)) +
-    geom_bar(stat = "identity") +
-    scale_fill_manual(values = c("genexp" = "#ff0000", "gpa" = "#ffA500", "snps" = "#ffff00", 
-                        "genexp+gpa" = "#32cd32", "genexp+snps" = "#0000ff", "gpa+snps"="#63e6f8", "genexp+gpa+snps" = "#ee82ee")) +
-    labs(title = "Classification scores for Ceftazidim", x = "Machine learning algorithm", y = "Accuracy score", fill = "Best combination of features") +
-    geom_text(aes(label = round(accuracy, digits = 2), vjust = 2)) +
-    theme(axis.text.x = element_text(angle = 90, hjust = 1))
-ggsave("plots/figure_4/cef_scores.png", plot = cef_plot, width = 6.67, height = 6.67)
-
-
-cip_scores <- all_scores %>%
-   filter(drug == 'Cip')
-
-cip_plot <- ggplot(data = cip_scores, aes(x = algorithm, y = accuracy, fill = features)) +
-    geom_bar(stat = "identity") +
-    scale_fill_manual(values = c("genexp" = "#ff0000", "gpa" = "#ffA500", "snps" = "#ffff00", 
-                        "genexp+gpa" = "#32cd32", "genexp+snps" = "#0000ff", "gpa+snps"="#63e6f8", "genexp+gpa+snps" = "#ee82ee")) +
-    labs(title = "Classification scores for Ciprofloxacin", x = "Machine learning algorithm", y = "Accuracy score", fill = "Best combination of features") +
-    geom_text(aes(label = round(accuracy, digits = 2), vjust = 2)) +
-    theme(axis.text.x = element_text(angle = 90, hjust = 1))
-ggsave("plots/figure_4/cip_scores.png", plot = cip_plot, width = 6.67, height = 6.67)
-
-
-mer_scores <- all_scores %>%
-   filter(drug == 'Mer')
-
-mer_plot <- ggplot(data = mer_scores, aes(x = algorithm, y = accuracy, fill = features)) +
-    geom_bar(stat = "identity") +
-    scale_fill_manual(values = c("genexp" = "#ff0000", "gpa" = "#ffA500", "snps" = "#ffff00", 
-                        "genexp+gpa" = "#32cd32", "genexp+snps" = "#0000ff", "gpa+snps"="#63e6f8", "genexp+gpa+snps" = "#ee82ee")) +
-    labs(title = "Classification scores for Meropenem", x = "Machine learning algorithm", y = "Accuracy score", fill = "Best combination of features") +
-    geom_text(aes(label = round(accuracy, digits = 2), vjust = 2)) +
-    theme(axis.text.x = element_text(angle = 90, hjust = 1))
-ggsave("plots/figure_4/mer_scores.png", plot = mer_plot, width = 6.67, height = 6.67)
-
-
-tob_scores <- all_scores %>%
-   filter(drug == 'Tob')
-
-tob_plot <- ggplot(data = tob_scores, aes(x = algorithm, y = accuracy, fill = features)) +
-    geom_bar(stat = "identity") +
-    scale_fill_manual(values = c("genexp" = "#ff0000", "gpa" = "#ffA500", "snps" = "#ffff00", 
-                        "genexp+gpa" = "#32cd32", "genexp+snps" = "#0000ff", "gpa+snps"="#63e6f8", "genexp+gpa+snps" = "#ee82ee")) +
-    labs(title = "Classification scores for Tobramycin", x = "Machine learning algorithm", y = "Accuracy score", fill = "Best combination of features") +
-    geom_text(aes(label = round(accuracy, digits = 2), vjust = 2)) +
-    theme(axis.text.x = element_text(angle = 90, hjust = 1))
-ggsave("plots/figure_4/tob_scores.png", plot = tob_plot, width = 6.67, height = 6.67) 
+ggsave("plots/figure_4/sweep_test_scores.png", plot = plot, width = 6.67, height = 6.67)
