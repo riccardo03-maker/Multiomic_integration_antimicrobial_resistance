@@ -177,8 +177,8 @@ if(__name__ == '__main__'):
                                                gamma = 1., degree = 3, class_weight = 'balanced')
         elif args.sweep == 'gamma' and args.kernel != 'linear':
             ml_algorithms.sweep_hyperparameter_gamma(kernel = args.kernel, features = ['genexp', 'gpa', 'snps'], drug = 'Cef',
-                                                gamma = np.logspace(-4, 4, num = 20), C = 0.1, tol = 1e-6, degree = 3, 
-                                                class_weight = 'balanced')            
+                                                gamma = np.logspace(-6, 2, num = 20), C = 0.1, tol = 1e-6, degree = 3, 
+                                                class_weight = 'balanced')          
         else:
             if args.cross:
                 ml_algorithms.cross_validate_model(model_name = 'svc', C = 0.1, kernel = args.kernel, tol = 1e-6, 
